@@ -140,7 +140,9 @@ async def test_the_extension_is_capped(mm, pool):
         with pytest.raises(mm.GpuJobTimeoutError):
             await _run(mm, pool, heartbeats_forever, timeout=0.4)
         elapsed = time.monotonic() - t0
-        assert elapsed < 4.0, (
+        # The cap fires at ~2.4s; the slack absorbs a loaded shared CI runner
+        # (4.08s was seen) while still failing if the extension were unbounded.
+        assert elapsed < 6.0, (
             f"cap is 0.4+2.0s but the job survived {elapsed:.1f}s"
         )
         assert elapsed > 2.0, "the cap fired before the extension it bounds"
@@ -355,3 +357,95 @@ async def test_caller_cancellation_consumes_the_future(mm, pool, monkeypatch):
         "cancellation did not register a consumer for the abandoned future — "
         "its eventual exception will be logged as never retrieved"
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('worker_error', [None, ValueError, TimeoutError])
+async def test_completion_wins_when_timeout_wait_resumes_late(mm, pool, monkeypatch, worker_error):
+    """A completed worker has cleared its heartbeat before its waiter resumes."""
+    from types import SimpleNamespace
+
+    clock = [100.0]
+    monkeypatch.setattr(mm, 'time', SimpleNamespace(monotonic=lambda: clock[0]))
+    release = threading.Event()
+    real_wait = asyncio.wait
+    calls = 0
+
+    def worker():
+        mm.report_model_load_activity()
+        assert release.wait(5), 'test did not release worker'
+        if worker_error:
+            raise worker_error('worker failure')
+        return 'completed audio'
+
+    async def delayed_wait(futures, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            # The timeout has fired, but the completed worker's result arrives
+            # before this waiter resumes and makes its next deadline decision.
+            release.set()
+            done, pending = await real_wait(futures, timeout=5)
+            assert done and not pending
+            clock[0] += 1.0
+            return set(), set(futures)
+        return await real_wait(futures, **kwargs)
+
+    monkeypatch.setattr(asyncio, 'wait', delayed_wait)
+    try:
+        if worker_error:
+            with pytest.raises(worker_error, match='worker failure'):
+                await _run(mm, pool, worker, timeout=0.4)
+        else:
+            assert await _run(mm, pool, worker, timeout=0.4) == 'completed audio'
+    finally:
+        release.set()
+
+
+def test_generating_heartbeats_are_not_credited_as_model_load_progress(mm, monkeypatch):
+    """Review (CodeRabbit, #2435): a sidecar's timer-thread heartbeat during
+    ``generate`` re-arms the recv watchdog but is not evidence the model is
+    loading or synthesising, so it must not extend the GPU worker's budget."""
+    sb = importlib.import_module("services.subprocess_backend")
+    calls = []
+    monkeypatch.setattr(mm, "report_model_load_activity", lambda: calls.append(1))
+    monkeypatch.setattr(mm, "running_on_gpu_pool", lambda: True)
+
+    class _Backend(sb.SubprocessBackend):
+        id = "testengine"
+        display_name = "test"
+
+        @classmethod
+        def is_available(cls):
+            return True, "test"
+
+        @classmethod
+        def venv_python(cls):  # pragma: no cover - not spawned
+            return sys.executable
+
+        @classmethod
+        def sidecar_script(cls):  # pragma: no cover - not spawned
+            return __file__
+
+        @property
+        def sample_rate(self):
+            return 24000
+
+        @property
+        def supported_languages(self):
+            return ["multi"]
+
+    b = _Backend.__new__(_Backend)
+    b._lock = threading.Lock()
+    frames = [
+        {"op": "progress", "stage": "loading_model", "percent": 1},
+        {"op": "progress", "stage": "generating", "percent": 2},
+        {"op": "progress", "stage": "generating", "percent": 3},
+        {"op": "audio", "audio_pcm_b64": "", "sample_rate": 24000, "n_samples": 0},
+    ]
+    monkeypatch.setattr(b, "_spawn", lambda: None)
+    monkeypatch.setattr(b, "_send", lambda msg: None)
+    monkeypatch.setattr(b, "_recv_with_timeout", lambda t: frames.pop(0))
+
+    b.generate("hello")
+    assert len(calls) == 1, f"only the cold-load frame is load evidence, got {len(calls)}"

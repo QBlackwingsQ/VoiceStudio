@@ -18,9 +18,11 @@ fully importable.
 """
 from __future__ import annotations
 
+import asyncio
 import re
 import sys
 
+import httpx
 import pytest
 
 
@@ -139,6 +141,73 @@ def test_llm_entries_are_network_n_a(fresh_app):
         assert entry["gpu_compat"] == []
 
 
+def test_diarisation_status_distinguishes_model_from_native_runtime(
+    fresh_app, monkeypatch
+):
+    from services import diarization_runtime
+
+    monkeypatch.setattr(
+        diarization_runtime,
+        "selected_backend",
+        lambda: diarization_runtime.SORTFORMER,
+    )
+    monkeypatch.setattr(
+        diarization_runtime,
+        "sortformer_status",
+        lambda: {
+            "model": diarization_runtime.SORTFORMER_REPO,
+            "model_installed": True,
+            "runtime_installed": False,
+            "installed": False,
+            "reason": (
+                "The Sortformer model is installed. Install the audio.cpp runtime to use it"
+            ),
+        },
+    )
+
+    response = _client(fresh_app).get("/engines/diarisation")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["model"] == diarization_runtime.SORTFORMER_REPO
+    assert body["model_installed"] is True
+    assert body["runtime_installed"] is False
+    assert body["installed"] is False
+    assert body["reason"] == (
+        "The Sortformer model is installed. Install the audio.cpp runtime to use it"
+    )
+    native = next(item for item in body["options"] if item["id"] == body["active"])
+    assert native["model_installed"] is True
+    assert native["runtime_installed"] is False
+
+
+def test_audiocpp_runtime_installer_routes_are_desktop_scoped(
+    fresh_app, monkeypatch
+):
+    from services import audiocpp_runtime_install
+
+    payload = {
+        "supported": True,
+        "installed": False,
+        "managed": False,
+        "version": None,
+        "platform": "windows-x64",
+        "job": {"state": "idle", "progress": 0.0, "error": None},
+    }
+    monkeypatch.setattr(audiocpp_runtime_install, "status", lambda: payload)
+    monkeypatch.setattr(
+        audiocpp_runtime_install,
+        "start_install",
+        lambda: {"status": "started", **payload},
+    )
+    client = _client(fresh_app)
+
+    assert client.get("/engines/audiocpp/runtime/install/status").json() == {**payload, "install_allowed": True}
+    response = client.post("/engines/audiocpp/runtime/install")
+    assert response.status_code == 200
+    assert response.json()["status"] == "started"
+
+
 def test_engine_discovery_omits_service_diagnostics(fresh_app, monkeypatch):
     from api.routers import engines
 
@@ -228,17 +297,69 @@ def test_indextts2_entry_has_subprocess_isolation_mode(fresh_app):
     assert by_id["indextts2"]["isolation_mode"] == "subprocess"
 
 
-def test_omnivoice_entry_has_in_process_isolation_mode(fresh_app):
-    client = _client(fresh_app)
-    r = client.get("/engines")
-    assert r.status_code == 200
-    by_id = {b["id"]: b for b in r.json()["tts"]["backends"]}
-    assert "omnivoice" in by_id
-    assert by_id["omnivoice"]["isolation_mode"] == "in-process"
+def _pin_omnivoice_inventory(monkeypatch, engines, *, with_alias):
+    from engines.omnivoice_subprocess import OmniVoiceSubprocessBackend
+    from services import model_manager
+
+    registry = {"omnivoice": engines.tts_backend.OmniVoiceBackend}
+    if with_alias:
+        registry["omnivoice-subprocess"] = OmniVoiceSubprocessBackend
+    monkeypatch.setattr(engines.tts_backend, "_REGISTRY", registry)
+    monkeypatch.setattr(model_manager, "resolve_omnivoice_checkpoint", lambda: "fixture/model")
+    for backend in registry.values():
+        monkeypatch.setattr(
+            backend,
+            "is_available",
+            classmethod(lambda cls: (True, "fixture ready")),
+        )
 
 
-def test_gpu_compat_omnivoice_variants_include_rocm(fresh_app):
+def _asgi_request(app, method, path, **kwargs):
+    async def make_request():
+        transport = httpx.ASGITransport(app=app, client=("127.0.0.1", 48152))
+        async with httpx.AsyncClient(transport=transport, base_url="http://local.test") as client:
+            return await client.request(method, path, **kwargs)
+
+    return asyncio.run(make_request())
+
+
+def test_cpu_api_describes_canonical_omnivoice_as_in_process(fresh_app, monkeypatch):
+    from api.routers import engines
+
+    _force_host(monkeypatch, "cpu")
+    _pin_omnivoice_inventory(monkeypatch, engines, with_alias=False)
+    response = _asgi_request(fresh_app, "GET", "/engines")
+    canonical = {row["id"]: row for row in response.json()["tts"]["backends"]}["omnivoice"]
+    assert (response.status_code, canonical["isolation_mode"]) == (200, "in-process")
+
+
+def test_mps_api_hides_alias_but_accepts_it_for_selection(fresh_app, monkeypatch):
+    from api.routers import engines
+
+    _force_host(monkeypatch, "mps")
+    monkeypatch.delenv("OMNIVOICE_TTS_BACKEND", raising=False)
+    _pin_omnivoice_inventory(monkeypatch, engines, with_alias=True)
+    monkeypatch.setattr(engines.tts_backend, "active_backend_id", lambda: "omnivoice-subprocess")
+    catalogue = _asgi_request(fresh_app, "GET", "/engines/tts").json()
+    ids = [entry["id"] for entry in catalogue["backends"]]
+    assert ids == ["omnivoice"]
+    assert (catalogue["active"], catalogue["backends"][0]["isolation_mode"]) == (
+        "omnivoice",
+        "subprocess",
+    )
+
+    selection = _asgi_request(
+        fresh_app,
+        "POST",
+        "/engines/select",
+        json={"backend_id": "omnivoice-subprocess", "family": "tts"},
+    )
+    assert (selection.status_code, selection.json()["active"]) == (200, "omnivoice-subprocess")
+
+
+def test_gpu_compat_omnivoice_variants_include_rocm(fresh_app, monkeypatch):
     """Both OmniVoice paths use torch's HIP-backed CUDA device on ROCm."""
+    _force_host(monkeypatch, "rocm")
     client = _client(fresh_app)
     r = client.get("/engines")
     by_id = {b["id"]: b for b in r.json()["tts"]["backends"]}
@@ -347,7 +468,7 @@ def test_select_llm_never_routing_gated(fresh_app, monkeypatch):
     assert r.status_code == 200, r.text
 
 
-# ── ASR selection via /engines/select (Model Catalogue → Engines ASR picker) ──────
+# ── ASR selection via /engines/select (Model Catalogue ASR picker) ──────
 #
 # The ASR family was always wired in _FAMILIES on paper, but no UI called it
 # and nothing exercised it — the Settings picker now does. Lock the contract:
@@ -467,7 +588,7 @@ def test_get_engines_asr_family_shape(fresh_app):
 # mlx-audio multiplexes 7+ curated models behind one backend id. Before this
 # fix there was NO way anywhere in the UI/API to pick which curated model
 # actually loads — it always defaulted to Kokoro even if the user had
-# downloaded e.g. Llama-OuteTTS via Model Catalogue → Models.
+# downloaded e.g. Llama-OuteTTS via the engine's Weights list in Model Catalogue.
 
 
 def _make_mlx_audio_available(monkeypatch):
@@ -545,6 +666,7 @@ def test_select_mlx_audio_repo_id_accepts_underscore_prefixes(fresh_app, monkeyp
         f"owner/{'a' * 97}",
         "-" * 100_000,
     ],
+    ids=lambda value: value if len(value) < 100 else f"oversized-{len(value)}",
 )
 def test_select_mlx_audio_rejects_malformed_repo_ids(fresh_app, monkeypatch, model_id):
     _make_mlx_audio_available(monkeypatch)
@@ -645,6 +767,26 @@ def test_engine_health_unknown_id(fresh_app):
     r = client.get("/engines/does_not_exist/health")
     assert r.status_code == 404
     assert "unknown engine id" in r.json()["detail"]
+
+
+def test_engine_health_resolves_managed_tts_sidecar(monkeypatch):
+    """Test engine must probe the same effective class generation uses."""
+    from api.routers import engines
+
+    class InProcessAdapter:
+        pass
+
+    class ManagedSidecar:
+        pass
+
+    monkeypatch.setitem(engines.tts_backend._REGISTRY, "managed-test", InProcessAdapter)
+    monkeypatch.setattr(
+        engines.tts_backend,
+        "get_backend_class",
+        lambda engine_id: ManagedSidecar if engine_id == "managed-test" else None,
+    )
+
+    assert engines._resolve_engine_class("managed-test") is ManagedSidecar
 
 
 def test_engine_health_is_admin_gated(fresh_app):

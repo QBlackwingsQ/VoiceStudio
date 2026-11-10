@@ -39,7 +39,7 @@ quantized native binary with a much smaller memory footprint.
 OmniVoice is the default, so normally there is nothing to do. If you switched
 away and want it back:
 
-- **Model Catalogue → Engines**, or
+- **Model Catalogue**, or
 - set `OMNIVOICE_TTS_BACKEND=omnivoice`.
 
 The env var overrides the persisted UI choice.
@@ -50,23 +50,56 @@ The env var overrides the persisted UI choice.
   (dubbing, dictation) — the model is never double-loaded.
 - On CUDA and ROCm the model runs fp16 with `torch.compile`; PyTorch exposes
   ROCm/HIP devices through its `cuda` API, while VoiceStudio's engine matrix
-  reports the hardware as ROCm. A speech recognizer is co-loaded for the
-  cloning path.
+  reports the hardware as ROCm. An installed speech recognizer can supply
+  missing reference transcripts for cloning.
 - Output is 24 kHz mono; the shared mastering chain (highpass + compressor)
   is tuned for this rate and applied automatically.
 - Cloning takes a short reference clip (`ref_audio`); 3–10 seconds is the
   sweet spot. A transcript of the clip improves conditioning — if the profile
-  has none, VoiceStudio transcribes the clip automatically on first use and
-  saves the result to the profile. A clip with a supplied transcript is limited
+  has none, VoiceStudio uses an already-installed speech recognizer on first
+  use and saves the result to the profile. This includes the catalogue’s
+  Whisper Turbo CT2 build; cloning does not require a second Transformers copy.
+  In Voice Cloning, a reference transcript you type also accompanies a selected
+  saved voice and overrides its stored transcript for that generation. Leaving
+  the field blank keeps the stored transcript or automatic transcription path.
+  The model-level Whisper fallback
+  also requires cached weights; it never downloads another ASR during cloning.
+  It reuses any installed snapshot of the configured PyTorch Whisper model
+  (`OMNIVOICE_PYTORCH_ASR_MODEL`), `openai/whisper-large-v3-turbo` or
+  `openai/whisper-large-v3`, including the pinned-commit layout Model Catalogue
+  leaves in the Hugging Face cache.
+  If no recognizer is installed, supply a matching reference transcript or
+  explicitly install and select a speech-to-text model in Model Catalogue. A clip with a supplied transcript is limited
   to 20 seconds so the two stay aligned; trim both to the same passage. Without
   a transcript, VoiceStudio can search up to 75 seconds in five contiguous,
-  bounded transcription passes and selects the passage with detected speech.
-  Longer clips must be trimmed first. If no spoken words are detected, trim to
+  bounded transcription passes and selects the 15-second passage with the most
+  detected speech. Those passes use the speech-to-text model already installed
+  in Model Catalogue. For a clip longer than 20 seconds, VoiceStudio skips
+  whole-clip transcription and ignores a saved profile transcript, so long
+  saved voices use this selection too. OmniVoice's own Whisper snapshot is only
+  a fallback when no catalogue recognizer can transcribe a window, and it is
+  never downloaded during cloning. When neither can run, the error says the clip
+  is too long and to trim it to 3–10 seconds, since a transcript cannot rescue it.
+  A transcript typed on the request for
+  such a clip is rejected with `[clone_ref_too_long]`.
+  Only that 15-second window is sent to the model. Clips longer than 75 seconds
+  must be trimmed first. If no spoken words are detected, trim to
   a clear 3–10 second passage or provide its matching transcript.
+- For cross-language cloning, keep the reference transcript in the sample's
+  original language and write the new script in the desired output language.
+  Choose that output language, or **Auto** for language-agnostic synthesis.
+  Choosing/uploading a different reference voice preserves the script's language
+  setting. The language picker guides synthesis; it does not translate text.
+  In `POST /generate` and shared profile conditioning, an explicit `language=Auto`
+  overrides the saved profile language; omitting `language` retains the profile
+  default for existing API clients. Engine language coverage and accent quality
+  still vary; use a multilingual engine that supports the target language.
 - Encoded voice references persist on disk (`prompt_cache/` in the app data
-  dir), so the first generation with a known voice after a restart skips the
-  re-encode and any transcription pass. Set `OMNIVOICE_PROMPT_DISK_CACHE=0`
-  to keep the cache in memory only.
+  dir), so known short references skip re-encoding and transcription after a
+  restart. Long references must rank windows once after a restart to recover
+  the selected transcript; subsequent generations reuse the chosen passage
+  and cached prompt without re-decoding the clip. Set
+  `OMNIVOICE_PROMPT_DISK_CACHE=0` to keep the prompt cache in memory only.
 - Style attributes (`instruct`) and a reference clip can be **combined**:
   when they agree, the instruct stabilizes cloning for the attributes it
   names (upstream documents dialect cloning as the canonical case — dialect
@@ -103,7 +136,7 @@ The env var overrides the persisted UI choice.
   above — switch to OmniVoice GGUF or close other GPU apps.
 - First generation is slow: the first call downloads multi-GB weights. To
   keep the first render quick, install the model ahead of time from
-  **Model Catalogue → Models** — a long first generate is almost always the
+  **Model Catalogue (TTS tab → the engine's Weights)** — a long first generate is almost always the
   download, not a hang.
 - General install issues: [install/troubleshooting.md](../install/troubleshooting.md).
 

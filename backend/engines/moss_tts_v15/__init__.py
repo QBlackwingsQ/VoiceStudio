@@ -38,7 +38,11 @@ isolated engine venv.
 from __future__ import annotations
 
 import logging
+import math
+import os
 from typing import TYPE_CHECKING
+
+from pathlib import Path
 
 from services.subprocess_backend import SubprocessBackend
 
@@ -84,6 +88,9 @@ class MossTTSV15Backend(SubprocessBackend):
         "MOSS-TTS-v1.5 (8B, 31 langs, zero-shot clone, Apache-2.0)"
     )
     supports_voice_design = False  # requires ref audio for timbre cloning
+    # The sidecar reads text/ref_audio/language/tokens only (#3654).
+    supports_num_step = False
+    supports_guidance_scale = False
     _DEFAULT_SAMPLE_RATE = 24000
     # Accelerator routing requires its matching runtime in the isolated venv.
     # MPS remains untested and is deliberately excluded.
@@ -123,9 +130,30 @@ class MossTTSV15Backend(SubprocessBackend):
         return resolve_moss_tts_v15_venv()
 
     @classmethod
+    def sidecar_python_hint(cls) -> "Path | None":
+        """Expose only the bootstrap-selected interpreter for routing metadata."""
+        from services.subprocess_backend import bootstrap_python_hint
+
+        from engines.moss_tts_v15 import bootstrap
+        return bootstrap_python_hint(bootstrap)
+
+    @classmethod
     def sidecar_script(cls):
         from engines.moss_tts_v15.bootstrap import MOSS_TTS_V15_SIDECAR_SCRIPT
         return MOSS_TTS_V15_SIDECAR_SCRIPT
+
+    @property
+    def recv_timeout_s(self) -> float:
+        """Receive timeout in seconds for the MOSS-TTS-v1.5 sidecar process (#2103)."""
+        # MOSS-TTS-v1.5 is an 8B model; synthesis legitimately outruns the
+        # 60s class default. OMNIVOICE_MOSS_TTS_V15_RECV_TIMEOUT_S tunes it (#2103).
+        try:
+            v = float(os.environ.get("OMNIVOICE_MOSS_TTS_V15_RECV_TIMEOUT_S", "900"))
+        except (ValueError, TypeError):
+            return 900.0
+        if not math.isfinite(v):
+            return 900.0
+        return max(30.0, v)
 
     # ── TTSBackend protocol ────────────────────────────────────────────────
 

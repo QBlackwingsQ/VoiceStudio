@@ -1,5 +1,5 @@
 """Issue #312 class — dub generation and batch TTS must honor the active
-engine selection (Model Catalogue → Engines) instead of silently falling back to
+engine selection (Model Catalogue) instead of silently falling back to
 OmniVoice via services.model_manager.get_model(), and must refuse — with an
 actionable error naming alternatives — instead of mis-cloning when the
 active engine can't do reference-audio voice cloning.
@@ -71,7 +71,7 @@ def _make_fake_engine(engine_id, *, supports_cloning=True, available=True,
 
         def generate(self, text, **kw) -> torch.Tensor:
             type(self).calls.append((text, kw))
-            return torch.zeros(1, 24000)
+            return torch.full((1, 24000), 0.25)
 
     return _FakeEngine
 
@@ -374,6 +374,17 @@ def test_batch_pinned_voice_fails_fast_on_noncloning_engine(
     b, make_job = batch_job_env
     fake = fake_registry("fake-batch-nonclone2", supports_cloning=False)
     monkeypatch.setenv("OMNIVOICE_TTS_BACKEND", "fake-batch-nonclone2")
+    monkeypatch.setattr(
+        b,
+        "_batch_voice",
+        lambda _voice_id: {
+            "ref_audio": "reference.wav",
+            "ref_text": "reference",
+            "instruct": "",
+            "seed": None,
+            "requires_cloning": True,
+        },
+    )
 
     job = make_job("jobB", voice_id="some-voice-id")
     with pytest.raises(ValueError) as exc_info:

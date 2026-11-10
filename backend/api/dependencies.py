@@ -26,9 +26,11 @@ from core.auth import (
     PrincipalKind,
     is_local_host,
     is_loopback,
+    presents_valid_credential,
     principal_for,
     remote_api_key,
 )
+from core.browser_guard import reject_cross_site_get
 from core.csrf import SAFE_HTTP_METHODS, cookie_csrf_allowed
 
 _TRUTHY = frozenset({"1", "true", "yes", "on"})
@@ -115,6 +117,21 @@ def _request_presents_admin_credential(
     return True
 
 
+def require_consumer(request: Request) -> None:
+    """Allow metadata access to local clients and authenticated remote consumers."""
+    principal = principal_for(request)
+    if not principal.allows("consume"):
+        # Explicit bare-server deployments delegate consumption to their port
+        # mapping. Preserve browser export history without granting admin/native.
+        if (_server_mode() and not _admin_credential_configured(request)
+                and principal.transport == CredentialTransport.NONE):
+            return
+        raise HTTPException(status_code=403, detail="authenticated consumer required")
+    if principal.transport in {CredentialTransport.COOKIE, CredentialTransport.LEGACY_COOKIE}:
+        if request.method.upper() not in SAFE_HTTP_METHODS and not cookie_csrf_allowed(request):
+            raise HTTPException(status_code=403, detail="CSRF validation failed")
+
+
 def require_loopback(request: Request) -> None:
     """Reject any request whose `client.host` is not a loopback address.
 
@@ -157,7 +174,7 @@ def require_loopback(request: Request) -> None:
             # Defense in depth. Privileged routers should declare
             # ``require_admin`` directly, but a missed migration must not turn
             # into an unauthenticated Docker write primitive.
-            require_admin(request)
+            check_admin(request)
             return
         if not _admin_credential_configured(request):
             return
@@ -191,7 +208,53 @@ def _admin_gate_403() -> None:
     )
 
 
-def require_admin(request: Request) -> None:
+async def require_admin(request: Request) -> None:
+    """FastAPI dependency form of :func:`check_admin`.
+
+    ``async`` on purpose: the check is pure in-memory work, and a sync
+    dependency is dispatched through the shared worker pool, so every request
+    on every admin router (including the one-per-second status polls) queued
+    behind whatever blocked sync route had filled it (#2594 class).
+    """
+    check_admin(request)
+
+
+_CONSUMER_GENERATION_ATTR = "_vs_consumer_generation"
+
+
+def consumer_generation(endpoint):
+    """Mark a mutating route as "run a generation", open to consumers.
+
+    Routers guarded by :func:`require_consumer_reads_admin_writes` keep editing
+    and deleting stored content admin-only. Routes that merely run a job
+    (translate, dub, batch submit, convert, capture, ...) are what PIN-paired
+    phones and consumer clients call, so they opt in individually here instead
+    of weakening the router guard. Apply below the ``@router.<verb>`` line.
+    """
+    setattr(endpoint, _CONSUMER_GENERATION_ATTR, True)
+    return endpoint
+
+
+async def require_consumer_reads_admin_writes(request: Request) -> None:
+    """Keep shared content readable and generation runnable; edits are admin.
+
+    PIN-paired phones need metadata, saved audio and the ability to start
+    generations on desktop too. Mutations of stored content (edit/delete/
+    import) require admin unless the route is marked
+    :func:`consumer_generation`. Lazy GET synthesis has its own media-action
+    gate because it also writes state.
+    """
+    route = request.scope.get("route")
+    endpoint = getattr(route, "endpoint", None)
+    if request.method.upper() in SAFE_HTTP_METHODS or getattr(
+        endpoint, _CONSUMER_GENERATION_ATTR, False
+    ):
+        require_consumer(request)
+    else:
+        check_admin(request)
+
+
+def check_admin(request: Request) -> None:
     """Gate RCE/filesystem-capable admin routers.
 
     Desktop callers keep the loopback-only contract. Docker cannot reliably
@@ -222,8 +285,10 @@ def require_admin_action(request: Request) -> None:
 
     A small number of legacy GET endpoints have real side effects. For example,
     an engine health check may spawn a sidecar process. Such routes cannot use
-    :func:`require_admin`'s bare-server discovery exception.
+    :func:`require_admin`'s bare-server discovery exception, and another
+    website must not be able to trigger them with a link or an image.
     """
+    reject_cross_site_get(request)
     host = request.client.host if request.client else None
     if is_loopback(host):
         return
@@ -231,6 +296,25 @@ def require_admin_action(request: Request) -> None:
         request,
         side_effectful_get=True,
     ):
+        return
+    _admin_gate_403()
+
+
+def require_admin_media_action(request: Request) -> None:
+    """Admin gate for a side-effectful GET that a browser media element triggers.
+
+    ``<audio>``/``<video>`` requests cannot carry the CSRF marker header, so
+    :func:`require_admin_action` would refuse even a same-origin
+    cookie-authenticated admin. This variant keeps the cross-site GET
+    rejection and still requires a real admin credential from remote callers —
+    a bare-server anonymous GET is refused exactly as before — while letting
+    header API keys and same-origin admin sessions through.
+    """
+    reject_cross_site_get(request)
+    host = request.client.host if request.client else None
+    if is_loopback(host):
+        return
+    if _server_mode() and presents_valid_credential(request):
         return
     _admin_gate_403()
 

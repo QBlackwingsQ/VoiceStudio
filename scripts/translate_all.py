@@ -5,12 +5,12 @@ import time
 from deep_translator import GoogleTranslator
 
 LOCALES_DIR = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "..", "frontend", "src", "i18n", "locales"
+    os.path.dirname(os.path.abspath(__file__)), "..", "electron", "src", "shared", "i18n", "locales"
 )
 
 LANGUAGES = [
     "zh-CN", "es", "fr", "de", "ja", "pt", "it", "ru", "ko",
-    "hi", "tr", "pl", "nl", "sv", "th", "vi", "id", "uk", "ar", "zh-TW"
+    "hi", "tr", "pl", "nl", "sv", "th", "vi", "id", "uk", "ar", "zh-TW", "gl"
 ]
 
 VAR_PAT = re.compile(r'\{\{[a-zA-Z0-9_]+\}\}')
