@@ -650,7 +650,7 @@ export function DubPage() {
     }
     const controller = new AbortController();
     const timeout = window.setTimeout(() => {
-      void planDubIncremental(code, controller.signal)
+      void planDubIncremental(code, controller.signal, target)
         .then(setIncrementalPlan)
         .catch((error) => {
           if (!isAbortError(error)) console.warn('Could not plan incremental dub:', error);
@@ -660,7 +660,14 @@ export function DubPage() {
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [code, session.fingerprintsByLang, session.phase, session.segments, session.voiceMatch]);
+  }, [
+    code,
+    target,
+    session.fingerprintsByLang,
+    session.phase,
+    session.segments,
+    session.voiceMatch,
+  ]);
   useEffect(() => () => segmentPreviewAbort.current?.abort(), []);
   useEffect(() => () => revokeObjectUrl(segmentPreview?.url), [segmentPreview?.url]);
   useEffect(() => {
@@ -880,6 +887,14 @@ export function DubPage() {
       : session.error === DUB_STOP_FAILED || session.error === 'Cancellation could not be confirmed'
         ? t('dub_workflow.stop_failed')
         : session.error;
+  const failedSpeechSegmentId =
+    session.event?.type === 'error' && session.event.error_code === 'dub_speech_missing'
+      ? session.event.segment_id
+      : undefined;
+  const failedSpeechRow =
+    typeof failedSpeechSegmentId === 'string'
+      ? session.segments.findIndex((segment) => segment.id === failedSpeechSegmentId)
+      : -1;
   const recoverWithInstalledAsr = async () => {
     if (!installedAsrModel || recoveringAsr) return;
     setRecoveringAsr(true);
@@ -1648,6 +1663,20 @@ export function DubPage() {
                   failure={session.failure}
                   fallback={errorMessage}
                   onDismiss={dismissDubError}
+                  action={
+                    typeof failedSpeechSegmentId === 'string' && failedSpeechRow >= 0 ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => selectTranscriptSegment(failedSpeechSegmentId)}
+                      >
+                        {t('batch.seg', {
+                          current: failedSpeechRow + 1,
+                          total: session.segments.length,
+                        })}
+                      </Button>
+                    ) : undefined
+                  }
                 />
               )}
               {!session.segments.length && (!session.recovery || busy) && (

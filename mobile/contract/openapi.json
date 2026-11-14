@@ -2662,6 +2662,17 @@
       ],
       "title": "Lang"
      },
+     "language": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Language"
+     },
      "segments": {
       "items": {
        "additionalProperties": true,
@@ -3459,6 +3470,11 @@
       "title": "Language",
       "type": "string"
      },
+     "profile_id": {
+      "default": "",
+      "title": "Profile Id",
+      "type": "string"
+     },
      "replacement": {
       "default": "",
       "title": "Replacement",
@@ -3550,6 +3566,11 @@
       "title": "Entries",
       "type": "array"
      },
+     "profile_id": {
+      "default": "",
+      "title": "Profile Id",
+      "type": "string"
+     },
      "replace": {
       "default": false,
       "title": "Replace",
@@ -3574,6 +3595,17 @@
        }
       ],
       "title": "Language"
+     },
+     "profile_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Profile Id"
      },
      "text": {
       "title": "Text",
@@ -3888,6 +3920,28 @@
       "title": "Ok",
       "type": "boolean"
      },
+     "runtime_device": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Runtime Device"
+     },
+     "runtime_log": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Runtime Log"
+     },
      "sample_rate": {
       "anyOf": [
        {
@@ -3970,6 +4024,39 @@
      "disk_free_gb"
     ],
     "title": "SetupStatusResponse",
+    "type": "object"
+   },
+   "SfxRequest": {
+    "properties": {
+     "duration": {
+      "default": 10.0,
+      "description": "Seconds of audio, 1 to 30.",
+      "title": "Duration",
+      "type": "number"
+     },
+     "prompt": {
+      "description": "What the sound is, in English or Chinese.",
+      "title": "Prompt",
+      "type": "string"
+     },
+     "seed": {
+      "anyOf": [
+       {
+        "maximum": 2147483647.0,
+        "minimum": 0.0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seed"
+     }
+    },
+    "required": [
+     "prompt"
+    ],
+    "title": "SfxRequest",
     "type": "object"
    },
    "SpeechAuthCapabilities": {
@@ -4317,7 +4404,7 @@
         "type": "null"
        }
       ],
-      "description": "'audio' streams raw audio bytes (the default); 'sse' streams `speech.audio.delta` / `speech.audio.done` server-sent events.",
+      "description": "'audio' streams raw audio bytes (the default); 'sse' streams `speech.audio.delta` / `speech.audio.done` server-sent events. PCM without an explicit duration is synthesized sentence by sentence.",
       "title": "Stream Format"
      },
      "voice": {
@@ -5380,6 +5467,20 @@
     "title": "_CudaDeviceBody",
     "type": "object"
    },
+   "_GgufResidentBody": {
+    "properties": {
+     "enabled": {
+      "description": "True to keep the GGUF runtime loaded between requests",
+      "title": "Enabled",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "enabled"
+    ],
+    "title": "_GgufResidentBody",
+    "type": "object"
+   },
    "_HFMirrorBody": {
     "properties": {
      "mode": {
@@ -5998,6 +6099,47 @@
      "event"
     ],
     "title": "_UiEventBody",
+    "type": "object"
+   },
+   "_VideoExportBody": {
+    "properties": {
+     "encoder": {
+      "anyOf": [
+       {
+        "enum": [
+         "software",
+         "hardware"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "software: libx264 (default); hardware: NVENC/QSV/AMF/VideoToolbox when available",
+      "title": "Encoder"
+     },
+     "max_resolution": {
+      "anyOf": [
+       {
+        "enum": [
+         "original",
+         "2160p",
+         "1440p",
+         "1080p",
+         "720p"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Cap for dub exports; only ever downscales. original = no cap",
+      "title": "Max Resolution"
+     }
+    },
+    "title": "_VideoExportBody",
     "type": "object"
    },
    "api__routers__sonitranslate__DubRequest": {
@@ -8378,6 +8520,64 @@
     ]
    }
   },
+  "/api/settings/perf/gguf-resident": {
+   "get": {
+    "description": "Whether the OmniVoice GGUF runtime stays loaded between requests.",
+    "operationId": "get_gguf_resident_api_settings_perf_gguf_resident_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Get Gguf Resident",
+    "tags": [
+     "settings"
+    ]
+   },
+   "put": {
+    "description": "Persist the toggle. Turning it off stops a running server at once.",
+    "operationId": "set_gguf_resident_api_settings_perf_gguf_resident_put",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/_GgufResidentBody"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Set Gguf Resident",
+    "tags": [
+     "settings"
+    ]
+   }
+  },
   "/api/settings/perf/offload-after-generation": {
    "get": {
     "description": "Whether the in-process TTS model moves to system RAM after generation.",
@@ -8670,6 +8870,117 @@
     "tags": [
      "settings"
     ]
+   }
+  },
+  "/api/settings/video-export": {
+   "get": {
+    "description": "How dub video exports are encoded and capped.",
+    "operationId": "get_video_export_api_settings_video_export_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Get Video Export",
+    "tags": [
+     "settings"
+    ]
+   },
+   "put": {
+    "description": "Persist either field. Applies from the next export, no restart.",
+    "operationId": "set_video_export_api_settings_video_export_put",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/_VideoExportBody"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Set Video Export",
+    "tags": [
+     "settings"
+    ]
+   }
+  },
+  "/api/sfx/generate": {
+   "post": {
+    "description": "Generate one sound effect. Returns ``{id, audio_url, duration_s, gen_time_s, seed, engine}``.",
+    "operationId": "sfx_generate_api_sfx_generate_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SfxRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Sfx Generate"
+   }
+  },
+  "/api/sfx/status": {
+   "get": {
+    "operationId": "sfx_status_api_sfx_status_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Sfx Status"
    }
   },
   "/archetypes": {
@@ -18066,7 +18377,26 @@
   },
   "/pronunciation": {
    "get": {
+    "description": "The language dictionary, or one voice's own entries with ``profile_id``.",
     "operationId": "list_entries_pronunciation_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "profile_id",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Profile Id"
+      }
+     }
+    ],
     "responses": {
      "200": {
       "content": {
@@ -18075,6 +18405,16 @@
        }
       },
       "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
      }
     },
     "summary": "List Entries"
@@ -18116,8 +18456,26 @@
   },
   "/pronunciation/export": {
    "get": {
-    "description": "Every entry as a JSON-serializable list (round-trips ``/import``).",
+    "description": "The language dictionary (or one voice's, with ``profile_id``) as a\nJSON-serializable list (round-trips ``/import`` with the same scope).",
     "operationId": "export_entries_pronunciation_export_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "profile_id",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Profile Id"
+      }
+     }
+    ],
     "responses": {
      "200": {
       "content": {
@@ -18126,6 +18484,16 @@
        }
       },
       "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
      }
     },
     "summary": "Export Entries"

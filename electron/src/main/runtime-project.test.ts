@@ -16,6 +16,7 @@ import * as pthAscii from './pth-ascii';
 import { PYPI_SPEED_SAMPLE_BYTES } from './pypi-mirror';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  installManagedPython,
   installRuntime,
   runtimeDownloadEnv,
   runtimeRequiredGib,
@@ -1273,9 +1274,13 @@ describe('packaged runtime setup', () => {
           code: 'UNKNOWN',
         });
     });
-    const refused = await installRuntime(bundle, project, 'uv', run, new AbortController().signal).catch(
-      (error: unknown) => error,
-    );
+    const refused = await installRuntime(
+      bundle,
+      project,
+      'uv',
+      run,
+      new AbortController().signal,
+    ).catch((error: unknown) => error);
     expect(refused).toBeInstanceOf(RuntimeLaunchRefusedError);
     expect((refused as RuntimeLaunchRefusedError).program).toBe('/managed/python');
     expect((refused as Error).message).toBe('spawn UNKNOWN');
@@ -1411,6 +1416,42 @@ describe('regional PyPI mirror for the frozen sync (#3444)', () => {
     expect(await readFile(join(project, 'uv.lock'), 'utf8')).toBe(LOCK);
     expect(await runtimeReady(bundle, project)).toBe(true);
     expect(await runtimeCompatible(bundle, project)).toBe(true);
+  });
+
+  it('Auto recovers a later source-archive DNS failure through the pinned mirror', async () => {
+    const { bundle, project } = await fixture();
+    const archive = 'packages/hash/antlr4-python3-runtime-4.9.3.tar.gz';
+    const lock = `${LOCK}\n[[package]]\nname = "antlr4-python3-runtime"\nsdist = { url = "https://files.pythonhosted.org/${archive}", hash = "sha256:archive" }\n`;
+    await writeFile(join(bundle, 'uv.lock'), lock);
+    const seen: string[] = [];
+    const run = vi.fn(async (_command: string, args: string[]) => {
+      if (args[0] !== 'sync' || args.includes('--dry-run')) return undefined;
+      seen.push(await readFile(join(project, 'uv.lock'), 'utf8'));
+      expect(args).toContain('--frozen');
+      if (seen.length === 1)
+        throw Object.assign(new Error('Runtime setup exited with code 1'), {
+          stderr: `error sending request for url (https://files.pythonhosted.org/${archive})\ndns error: No such host is known`,
+        });
+      await interpreter(project);
+      return undefined;
+    });
+    await installRuntime(
+      bundle,
+      project,
+      'uv',
+      run,
+      new AbortController().signal,
+      undefined,
+      'auto',
+    );
+    expect(seen).toHaveLength(2);
+    expect(seen[0]).toBe(lock);
+    expect(seen[1]).toContain(
+      `https://mirrors.aliyun.com/pypi/${archive}", hash = "sha256:archive"`,
+    );
+    expect(seen[1]).toContain('https://download-r2.pytorch.org/whl/cu128/torch.whl');
+    expect(await readFile(join(project, 'uv.lock'), 'utf8')).toBe(lock);
+    expect(await runtimeReady(bundle, project)).toBe(true);
   });
 
   it.each(['global', 'russia', 'restricted'] as const)(
@@ -1763,6 +1804,41 @@ describe('retryTransientDownload (#3882)', () => {
   const noWait = async () => {};
   const signal = () => new AbortController().signal;
 
+  it('settles cancellation during backoff before its timer and starts no second sync', async () => {
+    const { retryTransientDownload } = await import('./runtime-project');
+    const controller = new AbortController();
+    const reason = new Error('setup cancelled');
+    const sync = vi.fn().mockRejectedValue(gateway);
+    let settled = false;
+    const work = retryTransientDownload(
+      sync,
+      controller.signal,
+      () => queueMicrotask(() => controller.abort(reason)),
+      [200],
+    ).catch((error) => {
+      settled = true;
+      return error;
+    });
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(settled).toBe(true);
+      expect(await work).toBe(reason);
+      expect(sync).toHaveBeenCalledTimes(1);
+    } finally {
+      controller.abort(reason);
+      await work;
+    }
+  });
+
+  it('does not start a sync when cancellation already won', async () => {
+    const { retryTransientDownload } = await import('./runtime-project');
+    const controller = new AbortController();
+    controller.abort();
+    const sync = vi.fn().mockResolvedValue(undefined);
+    await expect(retryTransientDownload(sync, controller.signal)).rejects.toBe(controller.signal.reason);
+    expect(sync).not.toHaveBeenCalled();
+  });
+
   it('repeats the sync after a 5xx and succeeds', async () => {
     const sync = vi.fn().mockRejectedValueOnce(gateway).mockResolvedValue(undefined);
     const { retryTransientDownload } = await import('./runtime-project');
@@ -1795,7 +1871,9 @@ describe('retryTransientDownload (#3882)', () => {
   it('keeps the original error code when giving up', async () => {
     const sync = vi
       .fn()
-      .mockRejectedValue(Object.assign(new Error('Request failed: operation timed out'), { code: 'EACCES' }));
+      .mockRejectedValue(
+        Object.assign(new Error('Request failed: operation timed out'), { code: 'EACCES' }),
+      );
     const { retryTransientDownload } = await import('./runtime-project');
     const failure = await retryTransientDownload(sync, signal(), undefined, [1], noWait).catch(
       (error: Error) => error,
@@ -1816,5 +1894,73 @@ describe('retryTransientDownload (#3882)', () => {
     );
     expect((failure as Error).message).toBe('No solution found');
     expect(sync).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('installManagedPython', () => {
+  const stalled = Object.assign(
+    new Error('Download timed out: no data for 120 s from github.com'),
+    { code: 'DOWNLOAD_STALLED' },
+  );
+  const mirror =
+    'https://gh-proxy.com/https://github.com/astral-sh/python-build-standalone/releases/download';
+
+  it('retries a stalled GitHub download from the mirror and keeps the mirror for setup', async () => {
+    const env: NodeJS.ProcessEnv = {};
+    const seen: (string | undefined)[] = [];
+    const log = vi.fn();
+    const run = vi.fn(async (_c: string, _a: string[], _p: string, e?: NodeJS.ProcessEnv) => {
+      seen.push(e?.UV_PYTHON_INSTALL_MIRROR);
+      if (seen.length === 1) throw stalled;
+    });
+    await installManagedPython(
+      'uv',
+      ['python', 'install'],
+      '/p',
+      env,
+      run,
+      new AbortController().signal,
+      true,
+      log,
+    );
+    expect(seen).toEqual([undefined, mirror]);
+    expect(env.UV_PYTHON_INSTALL_MIRROR).toBe(mirror);
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('retrying from gh-proxy.com'));
+  });
+
+  it('falls back from the mirror to GitHub, and restores the source when both fail', async () => {
+    const env: NodeJS.ProcessEnv = { UV_PYTHON_INSTALL_MIRROR: mirror };
+    const seen: (string | undefined)[] = [];
+    const run = vi.fn(async (_c: string, _a: string[], _p: string, e?: NodeJS.ProcessEnv) => {
+      seen.push(e?.UV_PYTHON_INSTALL_MIRROR);
+      throw stalled;
+    });
+    await expect(
+      installManagedPython('uv', [], '/p', env, run, new AbortController().signal, true),
+    ).rejects.toBe(stalled);
+    expect(seen).toEqual([mirror, undefined]);
+    expect(env.UV_PYTHON_INSTALL_MIRROR).toBe(mirror);
+  });
+
+  it('keeps a chosen region, a cancelled setup and a refused launch on the first attempt', async () => {
+    const run = vi.fn(async () => {
+      throw stalled;
+    });
+    await expect(
+      installManagedPython('uv', [], '/p', {}, run, new AbortController().signal, false),
+    ).rejects.toBe(stalled);
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      installManagedPython('uv', [], '/p', {}, run, controller.signal, true),
+    ).rejects.toBeDefined();
+    const refused = vi.fn(async () => {
+      throw Object.assign(new Error('spawn EPERM'), { code: 'EPERM', syscall: 'spawn' });
+    });
+    await expect(
+      installManagedPython('uv', [], '/p', {}, refused, new AbortController().signal, true),
+    ).rejects.toMatchObject({ code: 'EPERM' });
+    expect(run).toHaveBeenCalledTimes(2);
+    expect(refused).toHaveBeenCalledTimes(1);
   });
 });

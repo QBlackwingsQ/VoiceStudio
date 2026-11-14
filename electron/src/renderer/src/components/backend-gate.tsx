@@ -1,3 +1,4 @@
+import { useVisibleInterval } from '@/lib/visible-interval';
 import { SetupGate } from './setup-gate';
 import { SetupProgressCard } from './setup-progress-card';
 import { ReportBug } from './report-bug';
@@ -23,12 +24,13 @@ import {
 import {
   ChevronDownIcon,
   ClipboardCopyIcon,
+  CpuIcon,
   DownloadIcon,
   FolderOpenIcon,
   RotateCcwIcon,
   TriangleAlertIcon,
 } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AgentFixButton } from '@/components/agent-fix-button';
 import { Button } from '@/components/ui/button';
@@ -96,15 +98,16 @@ function PanelToggle({
 function useElapsedSeconds(elapsedMs: number, running: boolean): number {
   // The bridge only pushes a status on change; tick locally so the counter moves.
   const [seconds, setSeconds] = useState(() => Math.floor(elapsedMs / 1000));
+  const startedAt = useRef(Date.now() - elapsedMs);
   useEffect(() => {
-    const startedAt = Date.now() - elapsedMs;
+    startedAt.current = Date.now() - elapsedMs;
     setSeconds(Math.floor(elapsedMs / 1000));
-    if (!running) return;
-    const id = window.setInterval(() => {
-      setSeconds(Math.floor((Date.now() - startedAt) / 1000));
-    }, 1000);
-    return () => window.clearInterval(id);
   }, [elapsedMs, running]);
+  useVisibleInterval(
+    () => setSeconds(Math.floor((Date.now() - startedAt.current) / 1000)),
+    1000,
+    running,
+  );
   return seconds;
 }
 
@@ -139,6 +142,7 @@ export function BackendGate({ children, repairDock }: BackendGateProps) {
   const [restarting, setRestarting] = useState(false);
   const [choosingLocation, setChoosingLocation] = useState(false);
   const [diagnosticsCopied, setDiagnosticsCopied] = useState(false);
+  const [cpuRestartFailed, setCpuRestartFailed] = useState(false);
   const [cleanConfirmOpen, setCleanConfirmOpen] = useState(false);
   const setup = status.stage === 'setup_required';
   const installing = status.stage === 'installing';
@@ -203,6 +207,7 @@ export function BackendGate({ children, repairDock }: BackendGateProps) {
     ? failureGuidance(failureCode, {
         message: status.message,
         smartAppControl: status.failure?.smartAppControl,
+        faultingModule: status.failure?.faultingModule,
         exitCode: status.exitCode,
         logLines: status.logTail,
       })
@@ -229,6 +234,23 @@ export function BackendGate({ children, repairDock }: BackendGateProps) {
     try {
       await getBridge()?.backend.restart();
     } catch {
+      setRestarting(false);
+    }
+  };
+
+  // A graphics driver crash: the Settings device control needs the engine
+  // running, so the screen offers the same CPU choice itself.
+  const cpuRestart =
+    Boolean(status.cpuRestartAvailable) &&
+    Boolean(guidance?.hints.includes('backend.hint_gpu_driver_fault'));
+  const restartOnCpu = async () => {
+    setRestarting(true);
+    setCpuRestartFailed(false);
+    try {
+      await getBridge()?.backend.restartOnCpu?.();
+    } catch {
+      // The settings file could not be read or written: say so, keep Retry.
+      setCpuRestartFailed(true);
       setRestarting(false);
     }
   };
@@ -525,8 +547,27 @@ export function BackendGate({ children, repairDock }: BackendGateProps) {
                         : t('backend.copy_diagnostics')}
                     </Button>
                   ) : null}
+                  {cpuRestart ? (
+                    <Button
+                      onClick={() => void restartOnCpu()}
+                      disabled={restarting}
+                      data-testid="backend-restart-cpu"
+                    >
+                      <CpuIcon data-icon="inline-start" />
+                      {t('backend.restart_on_cpu')}
+                    </Button>
+                  ) : null}
+                  {cpuRestart && cpuRestartFailed ? (
+                    <p
+                      role="alert"
+                      className="w-full text-sm text-destructive"
+                      data-testid="backend-restart-cpu-error"
+                    >
+                      {t('backend.restart_on_cpu_failed')}
+                    </p>
+                  ) : null}
                   <Button
-                    variant={causeAction === 'retry' ? 'default' : 'outline'}
+                    variant={causeAction === 'retry' && !cpuRestart ? 'default' : 'outline'}
                     onClick={retry}
                     disabled={restarting}
                   >

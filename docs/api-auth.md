@@ -18,6 +18,17 @@ env var that exempts trusted callers:
 | **API key** | `OMNIVOICE_API_KEY` env var on the backend | direct clients and first-party session bootstrap | non-loopback **HTTP + WebSocket** |
 | **Trusted networks** | `OMNIVOICE_TRUSTED_NETWORKS` env var | *exempts* the two gates above | non-loopback **consumption** routes only |
 
+The route authorization census (`scripts/dump_route_auth.py`) records effective
+FastAPI dependencies, including nested dependencies. Its policy test requires
+every mutating HTTP route and every WebSocket to carry a recognized gate or an
+explicit, documented exception. Only the read-only `GET /` frontend fallback is
+excluded; mutations and WebSockets at `/` remain visible. Exceptions record the
+current policy, including known gaps; they do not add authorization themselves.
+In particular, `/ws/tts` and `/ws/events` rely on the application API-key
+middleware and have no inline dictation guard: with no API key configured they
+retain the existing bootstrap behavior, and the HTTP-only share PIN does not
+protect them. The dictation paths perform additional inline checks.
+
 Loopback traffic (`127.0.0.1`, `::1`, `localhost`) is **never** gated — local
 tools keep working unchanged whichever gate is set.
 
@@ -368,7 +379,10 @@ Each entry must be a bare origin — `scheme://host:port`, exactly what the
 browser sends in its `Origin` header — with no path and no trailing slash
 (`http://192.168.1.159:3901/` would never match). The variable **replaces**
 the default list, so restate the loopback and `app://voicestudio` origins
-alongside your own. (The in-app LAN share and Tailscale flows in
+alongside your own. A refused request's 403 names its origin and gives the full
+`OMNIVOICE_ALLOWED_ORIGINS=` line to add, defaults included. In the desktop
+app, put it in `~/.config/omnivoice/env` (macOS, Linux) or
+`%USERPROFILE%\.config\omnivoice\env` (Windows) and restart VoiceStudio. (The in-app LAN share and Tailscale flows in
 [docs/sharing.md](sharing.md) don't need this — they serve UI and API from the
 same origin.) If you only moved the Vite dev server's port, set
 `OMNIVOICE_UI_PORT` (the older `VOICESTUDIO_UI_PORT` name is still accepted)
@@ -379,13 +393,18 @@ answered before PIN/API-key enforcement, and gate-generated `401` responses
 retain CORS headers so the UI can read the actual failure and prompt for the
 right credential.
 
-TLS-terminating proxies must establish the effective scheme at the ASGI server
-boundary. Uvicorn's proxy-header handling trusts loopback by default, which
-covers Tailscale Serve; a custom proxy on another address must be listed with
-`--forwarded-allow-ips=<proxy-ip>` (and proxy headers must remain enabled).
-VoiceStudio deliberately does not trust a raw `X-Forwarded-Proto` header inside
-the application: once Uvicorn accepts a trusted proxy, the resolved ASGI scheme
-drives exact-Origin checks and the session cookie's `Secure` attribute.
+Uvicorn applies proxy-header rewrites only for peers in its
+`--forwarded-allow-ips` list (loopback by default), which covers bare-metal
+Tailscale Serve. Docker can present the proxy as a bridge gateway instead.
+VoiceStudio's effective-scheme helper also permits a one-way upgrade to HTTPS
+from `X-Forwarded-Proto`; it never uses that header to downgrade HTTPS. This
+supports exact-Origin checks and adds the session cookie's `Secure` attribute
+without trusting the proxy's claimed client address. The header does not prove
+that TLS or certificate validation succeeded: verify the client-facing HTTPS URL
+in the browser. Do not set `FORWARDED_ALLOW_IPS=*` or trust a shared Docker gateway
+merely to make sharing work. If original client-address forwarding is needed,
+trust only a controlled proxy that sanitizes those headers and cannot be
+bypassed. See [Docker with Tailscale](install/docker.md#private-remote-access-with-tailscale).
 For a public path prefix such as `/studio`, either strip that prefix before
 forwarding or configure the ASGI `root_path` to the same value. WebSocket ticket
 validation removes only that trusted, configured prefix; it never accepts an

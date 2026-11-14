@@ -317,6 +317,36 @@ def apply_rocm_override_before_init(torch) -> str | None:
 
 _CUDA_ARCH_TAG = re.compile(r"^(sm|compute)_(\d+)([a-z]?)$")
 
+# Stamped onto the English advice for a pre-Volta NVIDIA card (Maxwell sm_5x,
+# Pascal sm_6x). No PyTorch CUDA build we ship can cover it, so a "reinstall a
+# cu128 build" remedy is wrong for it; callers key their wording off this.
+LEGACY_NVIDIA_MARKER = "no longer supports this GPU generation"
+
+
+def is_legacy_nvidia_arch(tag: str) -> bool:
+    """True for a CUDA ``sm_XY`` tag of a pre-Volta card (compute capability < 7.0).
+
+    Only an ``sm_`` tag qualifies: ROCm ``gfx`` names never match, and a card
+    of capability 7.0+ with a mismatched build is helped by a matching build.
+    """
+    m = _CUDA_ARCH_TAG.match(str(tag).strip().split(" ")[0])
+    if not m or m.group(1) != "sm":
+        return False
+    try:
+        return int(m.group(2)) // 10 < 7
+    except ValueError:
+        return False
+
+
+def legacy_nvidia_advice(device_name: str, device_arch: str) -> str:
+    """The accurate reason + next step for a pre-Volta NVIDIA card (no cu128 advice)."""
+    return (
+        f"{device_name} ({device_arch}) is an older NVIDIA GPU: this PyTorch build "
+        f"{LEGACY_NVIDIA_MARKER}, so PyTorch engines run on the CPU. Installing "
+        "another CUDA build will not help. The Vulkan engines (e.g. audio.cpp, "
+        "CosyVoice GGUF, OmniVoice GGUF) can use this GPU."
+    )
+
 
 def cuda_build_covers(arch_list, major: int, minor: int) -> bool:
     """Can a torch build compiled for ``arch_list`` run on CC ``major.minor``?
@@ -693,6 +723,11 @@ class HostCaps:
     ``family`` reflects what was actually honored: an override that names a
     family this host doesn't have is noted and ignored, never obeyed blindly."""
 
+    gpu_probe_skipped: bool = False
+    """``True`` when the user chose CPU, so no GPU runtime was probed: the
+    host's accelerators are unknown, not absent. Reports must say the user
+    chose CPU, never that a GPU failed (#4006)."""
+
 
 #: Every value the compute-device override accepts. "auto" = today's
 #: priority pick; "cpu" is always honorable (invariant: cpu is always
@@ -716,9 +751,30 @@ def requested_device_override() -> str:
     return val if val in DEVICE_OVERRIDE_CHOICES else "auto"
 
 
+#: Note on a host pinned to CPU, where no accelerator is probed.
+CPU_PINNED_NOTE = (
+    "compute device pinned to 'cpu' by user override; GPUs were not probed "
+    "(choose Auto in Settings → Performance & Device to detect them again)"
+)
+
+
 def _probe() -> HostCaps:
     """Run the probe once. Enumerates every failure branch from the spec's
     degradation contract; never raises."""
+    # An explicit CPU choice is honoured before anything touches a GPU: it is
+    # the recovery after a graphics driver crash (#4002, Restart on CPU), and
+    # initialising CUDA or opening DirectML here could hit that driver again.
+    # It also stops every caller of the cached caps (routing, /health, the
+    # loader) from probing an accelerator afterwards.
+    if requested_device_override() == "cpu":
+        return HostCaps(
+            family="cpu",
+            available_families=("cpu",),
+            notes=(CPU_PINNED_NOTE,),
+            probe_ok=True,
+            requested_family="cpu",
+            gpu_probe_skipped=True,
+        )
     try:
         import torch
     except Exception:
@@ -926,6 +982,18 @@ def detect_host_caps() -> HostCaps:
     return _probe()
 
 
+def gpu_probe_skipped() -> bool:
+    """Whether this process runs on an explicit CPU choice and must not touch a
+    GPU runtime: background checks (pool sizing, compatibility notices, cache
+    release) ask this instead of ``torch.cuda.is_available()``, which would
+    initialise the driver the choice is avoiding. Frozen per process like the
+    caps it reads. Never raises."""
+    try:
+        return bool(getattr(detect_host_caps(), "gpu_probe_skipped", False))
+    except Exception:  # noqa: BLE001 - a status question must never fail its caller
+        return False
+
+
 def refresh() -> HostCaps:
     """Clear the cache and re-probe. **TEST-ONLY** — nothing in the running app
     calls this (host caps are immutable per process)."""
@@ -1006,6 +1074,9 @@ __all__ = [
     "same_generation_targets",
     "build_arch_list",
     "KERNEL_RISK_MARKER",
+    "LEGACY_NVIDIA_MARKER",
+    "is_legacy_nvidia_arch",
+    "legacy_nvidia_advice",
     "DIRECTML_MARKER",
     "UNUSABLE_GPU_MARKER",
     "cuda_forced",

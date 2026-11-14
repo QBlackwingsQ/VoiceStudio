@@ -16,7 +16,7 @@ import threading
 import traceback
 from pathlib import Path
 from typing import Optional, Literal
-from fastapi import APIRouter, File, Form, UploadFile, HTTPException, Depends
+from fastapi import APIRouter, File, Form, UploadFile, HTTPException, Depends, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel
 
@@ -96,6 +96,20 @@ def _binary_audio(media_type: str) -> dict:
     }
 
 
+async def _static_output_fallback(request: Request, name: str):
+    """Serve ``name`` from OUTPUTS_DIR exactly as the ``/audio`` mount would.
+
+    The encode routes below match every ``/audio/<anything>.mp3|ogg|opus`` and
+    so shadow the static mount; names that are not a generated 8-hex id (for
+    example ``audiobook_<job>.mp3``) are handed back to the same
+    traversal-safe, header-hardened StaticFiles implementation."""
+    from core.safe_static import SafeMediaFiles
+
+    scope = dict(request.scope)
+    scope["method"] = "HEAD" if request.method == "HEAD" else "GET"
+    return await SafeMediaFiles(directory=OUTPUTS_DIR).get_response(name, scope)
+
+
 @router.get(
     "/audio/{audio_id}.ogg",
     dependencies=[Depends(reject_cross_site_get)],
@@ -106,10 +120,11 @@ def _binary_audio(media_type: str) -> dict:
     dependencies=[Depends(reject_cross_site_get)],
     **_binary_audio("audio/ogg"),
 )
-async def generated_ogg_opus(audio_id: str):
+async def generated_ogg_opus(audio_id: str, request: Request):
     """Serve the same render as /audio/<id>.wav, encoded as Ogg/Opus."""
     if not re.fullmatch(r"[0-9a-f]{8}", audio_id):
-        raise HTTPException(status_code=404, detail="Audio file not found")
+        ext = request.url.path.rsplit(".", 1)[-1]
+        return await _static_output_fallback(request, f"{audio_id}.{ext}")
     path = _safe_output_path(f"{audio_id}.wav")
     if path is None:
         raise HTTPException(status_code=404, detail="Audio file not found")
@@ -129,7 +144,7 @@ async def generated_ogg_opus(audio_id: str):
     async with encode_lock:
         try:
             if _ogg_cache_key(path) != key:
-                return await generated_ogg_opus(audio_id)
+                return await generated_ogg_opus(audio_id, request)
         except FileNotFoundError:
             raise HTTPException(status_code=404, detail="Audio file not found") from None
         encoded = _cached_ogg(key)
@@ -161,12 +176,12 @@ async def generated_ogg_opus(audio_id: str):
     dependencies=[Depends(reject_cross_site_get)],
     **_binary_audio("audio/mpeg"),
 )
-async def generated_mp3(audio_id: str):
+async def generated_mp3(audio_id: str, request: Request):
     """Serve the same render as /audio/<id>.wav, encoded as MP3 for export.
 
     Unlike Ogg/Opus this is a one-shot download, so it is not cached."""
     if not re.fullmatch(r"[0-9a-f]{8}", audio_id):
-        raise HTTPException(status_code=404, detail="Audio file not found")
+        return await _static_output_fallback(request, f"{audio_id}.mp3")
     path = _safe_output_path(f"{audio_id}.wav")
     if path is None or not os.path.isfile(path):
         raise HTTPException(status_code=404, detail="Audio file not found")
@@ -989,9 +1004,27 @@ def _is_media_process_launch_failure(exc: BaseException) -> bool:
     }
 
 
+def _legacy_nvidia_note() -> str:
+    """The pre-Volta NVIDIA advice when device 0 is such a card, else ``""``."""
+    try:
+        import torch
+
+        from core.device_caps import arch_unsupported, is_legacy_nvidia_arch, legacy_nvidia_advice
+
+        mismatch = arch_unsupported(torch)
+        if mismatch is not None and is_legacy_nvidia_arch(mismatch[0]):
+            return legacy_nvidia_advice(torch.cuda.get_device_name(0), mismatch[0])
+    except Exception:  # noqa: BLE001 - classification only; fall back to the generic text
+        pass
+    return ""
+
+
 def _oom_friendly_reraise(e):
     """Best-effort cache flush + the user-facing OOM hint shared by both
     inference paths."""
+    if isinstance(e, GpuPoolBusyError):
+        raise e
+
     import gc
     from services.model_manager import release_device_cache
 
@@ -1113,6 +1146,12 @@ def _oom_friendly_reraise(e):
     # raw error too in case CUDA was forced (OMNIVOICE_FORCE_CUDA) or a sub-path
     # still ran on the GPU — point at the real fix, not the Flush button.
     if "no kernel image is available" in _low:
+        _legacy = _legacy_nvidia_note()
+        if _legacy:
+            raise RuntimeError(
+                f"{_legacy} Switch the compute device to CPU in Settings. "
+                f"The Flush button won't help. Underlying error: {e}"
+            ) from e
         raise RuntimeError(
             f"Your GPU isn't supported by the installed PyTorch build (CUDA can't "
             f"launch kernels for its compute capability). Switch the compute device "
@@ -1765,7 +1804,7 @@ async def _finalize_generation(
 
         _ph("speech_generated", {
             "mode": history_mode,
-            "feature": "convert" if history_mode == "convert" else ("clone" if ref_audio_path else "design"),
+            "feature": history_mode if history_mode in ("convert", "sfx") else ("clone" if ref_audio_path else "design"),
             "action": "generate",
             "outcome": "complete",
             **({"engine_id": engine_id} if engine_id else {}),
@@ -1942,10 +1981,6 @@ async def generate_speech(
     from services.performance_profiles import tts_defaults
 
     sampling_defaults = tts_defaults(engine_id)
-    if num_step is None:
-        num_step = sampling_defaults.get("num_step", 16)
-    if postprocess_output is None:
-        postprocess_output = sampling_defaults.get("postprocess_output", True)
     try:
         backend_cls = get_backend_class(engine_id)
     except ValueError:
@@ -1956,6 +1991,10 @@ async def generate_speech(
                 "See GET /engines/tts for the list of valid engine ids."
             ),
         )
+    if num_step is None:
+        num_step = sampling_defaults.get("num_step", 16)
+    if postprocess_output is None:
+        postprocess_output = sampling_defaults.get("postprocess_output", True)
     # Validate expressive controls before model loads or GPU routing. A
     # request must not silently lose emotion when switching to an engine
     # without this capability, or send conflicting emotion sources.
@@ -2315,37 +2354,21 @@ async def generate_speech(
     if isinstance(language, str) and language.strip().lower() == "auto":
         language = None
 
-    # Engine-agnostic text normalization (junk strip, numbers→words,
-    # abbreviations) — AFTER `language` is fully resolved, and BEFORE the
-    # pronunciation dictionary so user dictionary entries operate on
-    # normalized text and respellings are never re-mangled (ordering rationale
-    # in services/text_normalization.py). Pref-gated (default ON), idempotent,
-    # never raises; applied exactly once per request, at this choke point.
-    from services.text_normalization import normalize_for_tts
-    text = normalize_for_tts(text, language)
-
-    # Expressive-TTS Spec 01: apply the user pronunciation dictionary + inline
-    # [[…]] one-off overrides to the text, here — AFTER `language` is fully
-    # resolved (a profile may fill it above) so per-language entries match the
-    # real render language, and BEFORE the text reaches either inference path
-    # (native VoiceStudio or a pluggable backend) and the chunk splitter. This is
-    # the single point user text → normalized text → model, so the transform
-    # covers generate for every engine. Pure text substitution → identical on
-    # mac/Win/Linux. A disabled pref or empty dictionary is a pass-through, so
-    # plain text stays byte-identical (#G5 backward-compat).
-    if pronounce and pronunciation_enabled():
-        from services.pronunciation import apply_pronunciation, load_entries_from_db
-        try:
-            _pron_rows = load_entries_from_db()
-        except Exception:  # noqa: BLE001 — table missing / DB locked → no-op
-            _pron_rows = []
-        text = apply_pronunciation(text, _pron_rows, language)
-    else:
-        # Even with the dictionary off, inline [[…]] overrides are an explicit,
-        # in-text authoring choice → always honored (and never left as literal
-        # double-bracket text the model would mispronounce).
-        from services.pronunciation import apply_inline_overrides
-        text = apply_inline_overrides(text)
+    # Resolve the final language and voice first; prepare spoken text once
+    # before native/streaming inference and chunking. Inline choices remain
+    # active even when the request disables saved dictionary entries.
+    try:
+        from services.pronunciation import prepare_speech_text
+        text = await asyncio.to_thread(
+            prepare_speech_text, text, language, profile_id=resolved_profile_id,
+            dictionary=pronounce and pronunciation_enabled(),
+        )
+    except BaseException:
+        # Preparation precedes the classic/streaming cleanup scopes. It never
+        # reads the uploaded reference, so cancellation can release it now.
+        if cleanup_ref and ref_lease is not None:
+            ref_lease.finish_request()
+        raise
 
     start_time = time.time()
 
@@ -2929,8 +2952,8 @@ def pronunciation_enabled() -> bool:
     """The pronunciation dictionary is on unless OMNIVOICE_PRONUNCIATION is
     "0"/"false"/"no"/"off". Env only: a prefs key was once read here too, but
     no Settings surface ever wrote it."""
-    value = os.environ.get("OMNIVOICE_PRONUNCIATION")
-    return value is None or value.strip().lower() not in ("0", "false", "no", "off", "")
+    from services.pronunciation import dictionary_enabled
+    return dictionary_enabled()
 
 
 HISTORY_CAP_PREF_KEY = "generation_history_cap"

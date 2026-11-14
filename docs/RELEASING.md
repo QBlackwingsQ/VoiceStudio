@@ -91,7 +91,7 @@ version only after validation.
 ## Before tagging
 
 1. Merge only after required CI and review are green.
-2. Run the artifact-only Electron rehearsal, `.github/workflows/electron-build.yml`,
+2. Run the artifact-only Electron build, `.github/workflows/electron-build.yml`,
    and inspect all five outputs: Linux x64, Windows x64, Windows ARM64, macOS
    arm64, macOS x64. Windows ARM64 is experimental: a failed leg does not block
    the other four.
@@ -104,13 +104,15 @@ version only after validation.
    check alone is not evidence that runtime installation works.
 3. Verify a packaged launch and managed backend startup on the changed platforms.
 4. Fold the `changelog.d/` fragments into `## [Unreleased]` (`scripts/release.py` does this and deletes them; by hand: `uv run python scripts/changelog_fragments.py`), then rename `## [Unreleased]` in `CHANGELOG.md` to `## [X.Y.Z] — YYYY-MM-DD`.
-   Lead with the largest user-visible change, keep Highlights to 3–5 bullets,
+   Open the section with its **Highlights** (3–5 bullets, the largest user-visible
+   change first; the workflow puts the Download table above them),
    include migration steps and real screenshots when relevant, and verify human
    contributors and bug reporters from the tag comparison and included PRs. The
    release workflow adds a `### Contributors` block to the GitHub Release notes
    by itself: everyone who committed since the latest stable release, plus the
    authors of PRs merged in that span (ranked by commits; bots, AI agents and
-   unlinked placeholders are never listed). It does **not** find bug reporters,
+   unlinked placeholders are never listed). A second or later beta first lists
+   who is new since the previous beta, then that full list. It does **not** find bug reporters,
    and it skips the block when the changelog section already has a
    `### Contributors` heading, so write one by hand when you want roles or
    reporters credited.
@@ -124,6 +126,40 @@ version only after validation.
    any file’s history; restore access to missing objects and rerun before
    treating its contributor list as complete.
 7. Confirm the version matches the intended tag.
+8. [Rehearse the release](#rehearse-a-release) from the commit you will tag.
+
+## Rehearse a release
+
+Run the real release workflow without a tag before every tag, and whenever a
+release workflow change needs proof:
+
+```bash
+gh workflow run electron-release.yml --ref <branch> -f rehearsal=true
+```
+
+It builds the dispatched commit exactly as a tag would: every desktop package
+(Linux x64, Windows x64 and ARM64, macOS arm64 and x64), the CLI bundle inside
+them, the `omnivoice-tts` runtimes, the Android APK/AAB and the unsigned iPhone
+IPA, and the packaged smoke tests. The release job then collects every asset and
+runs `prepare_electron_release.py --rehearsal` against the version in
+`package.json` (it must be `X.Y.Z` or `X.Y.Z-beta.N`, and `CHANGELOG.md` must have
+its section), the updater feed checksum and channel checks, the Tauri sunset
+feeds for Stable, and the signing table. The notes, `SHA256SUMS.txt` and the
+installers stay on the workflow run for 3 days. When some build legs fail, the
+rehearsal still verifies the ones that built, then fails and lists the missing
+legs in the run summary; a release still stops at the first failed leg.
+
+It never publishes: no tag, no GitHub Release or draft, no feed upload, no
+Docker or Android repository dispatch. `publish`, `release_tag` and
+`allow_unsigned` are refused with `rehearsal`. macOS builds are signed and
+notarized when the Apple secrets exist, like a release. Phone builds skip the
+protected `mobile-release` environment, so the APK/AAB are unsigned. SignPath is
+skipped unless you add `-f signpath_policy=test-signing`, which signs the Windows
+installers with the project's test certificate; the release policy is never used.
+
+It does not prove the publishing steps themselves, the Android repository update,
+release-signed Android or App Store builds, SignPath release approval, or Docker
+images (`docker.yml` builds those on `main`).
 
 ## Build a release draft
 
@@ -161,9 +197,10 @@ Dispatch `electron-release.yml` for the exact tag with `publish=true`. Signing
 and notarization are required by default. The owner may explicitly set
 `allow_unsigned=true`. Never select that exception without the owner's decision.
 Every build, published or not, verifies what each platform leg actually ships
-and the release notes open with an **Installer signing** table built from those
-checks (✅ signed and notarized, ⚠️ unsigned or ad hoc, with what users will
-see). A macOS bundle with an invalid signature always fails, and a platform
+and the release notes open with one **Download** table: every desktop and phone
+download with its signing, built from those checks (✅ signed and notarized, ⚠️
+unsigned or ad hoc, with what users will see). The changelog section follows
+it, starting with its **Highlights**, so it needs no download table of its own. A macOS bundle with an invalid signature always fails, and a platform
 whose signing credentials are configured fails if its installers are not signed
 with them, even with `allow_unsigned=true`.
 The owner can delegate it: accounts listed in the `UNSIGNED_RELEASE_PUBLISHERS`
@@ -228,7 +265,7 @@ type the tag name.
   its password) and, for any platform without them, stops unless you explicitly
   accept shipping that platform unsigned. The dispatch's `allow_unsigned` flag
   only accepts platforms without credentials: a platform with signing configured
-  must still produce signed installers, and the notes' **Installer signing**
+  must still produce signed installers, and the notes' **Download**
   table shows each platform's measured result.
 - `--publish vX.Y.Z[-beta.N]` (`make release-publish TAG=…`) publishes an existing
   draft build later.
@@ -301,7 +338,10 @@ Every direct desktop installer except Intel macOS ships the OmniVoice GGUF
 runtime under `resources/bin/` (#2780). `electron-release.yml` and the
 packaging rehearsal call `build-omnivoice-tts.yml` (`desktop: true`) and stage
 each platform's artifact into `electron/build/omnivoice-tts/`; Windows ARM64
-ships the x64 build. Signing rewrites the binary, so the build refreshes
+ships the x64 build. Each platform ships `tts-server-<platform>` (the opt-in resident server,
+#3654) next to `omnivoice-tts-<platform>`; the build, the staging step and
+`packaging-contract.mjs` all fail if it is missing or absent from the manifest.
+Signing rewrites the binaries, so the build refreshes
 `bin/checksums.sha256` after signing (`electron/omnivoice-tts-bundle.mjs`; on
 macOS before the bundle is sealed). `packaging-contract.mjs` fails a release
 whose installer lacks the runtime, whose manifest no longer matches the shipped
@@ -343,6 +383,14 @@ signing report. Tauri signing keys cannot sign Electron packages. Existing
 artifact names, app IDs, data paths, and updater channels are compatibility
 contracts.
 
+Windows installers can instead be signed through SignPath Foundation: set the
+`SIGNPATH_API_TOKEN` secret and the `SIGNPATH_ORGANIZATION_ID`,
+`SIGNPATH_PROJECT_SLUG` and `SIGNPATH_SIGNING_POLICY_SLUG` variables, and leave
+`ELECTRON_WINDOWS_CSC_LINK` unset. The Windows build leg then signs the installer,
+and `electron/scripts/apply-signed-windows.mjs` regenerates the blockmap and the
+feed's sha512/size before upload. Policy and owner checklist:
+[code-signing-policy.md](code-signing-policy.md).
+
 ## Retry and rollback
 
 Re-run failed jobs in the same workflow run when possible. The release job
@@ -355,16 +403,21 @@ Do not move or recreate an existing tag.
 
 ## Merge queue (maintainers)
 
-With "Require branches to be up to date" on, every merge to `main` puts every other open PR behind, and each needs an update plus a full CI run. The merge queue replaces that: a PR that passes its checks joins the queue, GitHub builds a temporary commit of `main` plus the queued PRs, runs CI once on it, and merges.
+GitHub's merge queue is available only to repositories owned by an organization. This repository is owned by a user account, so the queue cannot be turned on. The current setup instead:
 
-The workflows are ready: `ci.yml` runs on `merge_group`, and `merge-queue-checks.yml` reports the PR-level required checks ("CLA gate", "Commit identities", "CLA", "Commit identity policy") on the queue's commit, because they cannot run there. `tests/test_merge_queue.py` keeps those names equal to the ruleset's required list; change both together.
+- The `main` ruleset does **not** require branches to be up to date before merging, so a merge to `main` does not put every other open PR behind.
+- **Auto-merge** is on: `gh pr merge N --auto --merge` merges a PR once its required checks pass.
+- The only required CI status is **Tests (backend + frontend)**, which waits for every job in `ci.yml` (Python tests, platform smokes, Electron tests, renderer smokes, UI crawler, Desktop UI, Linux native package, installer contracts and the release smoke). A failure in any of them blocks the merge without listing each job in the ruleset.
+- A PR's CI tests it merged with `main` as `main` stood when the run started. Without the up-to-date requirement, `main` can move before the PR merges, so two PRs that each pass can still break `main` together. `ci.yml` runs in full on every push to `main`; when that run fails, fixing `main` comes before the next merge.
+
+Moving the repository to an organization would make the queue available, and the workflow support for it stays in place. The workflows are ready: `ci.yml` runs on `merge_group`, and `merge-queue-checks.yml` reports the PR-level required checks ("CLA gate", "Commit identities", "CLA", "Commit identity policy") on the queue's commit, because they cannot run there. `tests/test_merge_queue.py` keeps those names equal to the ruleset's required list; change both together.
 
 On the queue commit, `ci.yml` compares the commit with its base to decide the documentation-only and Electron scopes, as it does for a pull request. The pass cache (see `.github/CONTRIBUTING.md` → Quality gates) lets a queued job skip when its inputs match a green run on `main`, so jobs whose inputs the queued pull requests did not touch do not run again. Pushes to `main` always run in full.
 
-To turn it on (Settings → Rules → Rulesets → `main`):
+To turn it on once the repository belongs to an organization (Settings → Rules → Rulesets → `main`):
 
 1. Add **Require merge queue**: method *Merge commit*, build concurrency 1–3, minimum group size 1, wait time 0–5 minutes, status check timeout 60 minutes.
-2. Under **Require status checks to pass**, untick **Require branches to be up to date before merging**; the queue makes it unnecessary.
+2. Under **Require status checks to pass**, keep **Require branches to be up to date before merging** unticked; the queue makes it unnecessary.
 3. Merge PRs with **Merge when ready** (the queue button) instead of **Merge**. `gh pr merge N --merge` joins the queue once it is on.
 
 Try it on one PR first. If a queued PR stalls, a required check name in the ruleset no longer matches a job or status the queue commit reports: compare the ruleset with `tests/test_merge_queue.py`.

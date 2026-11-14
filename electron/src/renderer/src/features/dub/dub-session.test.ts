@@ -12,6 +12,7 @@ import {
   setDubFitOptions,
   dubSession,
   generateDub,
+  planDubIncremental,
   resumeDub,
   editDubSegment,
   clearDubEditHistory,
@@ -46,6 +47,46 @@ vi.mock('@/lib/api/event-stream', async (load) => ({
   ...(await load<typeof import('@/lib/api/event-stream')>()),
   consumeTaskStream: vi.fn(),
 }));
+
+it.each(['Auto', 'English'])(
+  'plans incremental speech with its %s generation language',
+  async (language) => {
+    const previous = dubSession.state;
+    try {
+      dubSession.setState((current) => ({
+        ...current,
+        fingerprintsByLang: { en: { a: 'stored' } },
+        segments: [
+          {
+            id: 'a',
+            start: 0,
+            end: 1,
+            text: 'cats',
+            text_original: 'cats',
+            profile_id: 'pron-voice',
+          },
+        ],
+      }));
+      vi.mocked(apiJson)
+        .mockReset()
+        .mockResolvedValueOnce({ stale: [], fresh: ['a'] });
+      await expect(planDubIncremental('en', undefined, language)).resolves.toEqual({
+        stale: [],
+        fresh: ['a'],
+      });
+      expect(apiJson).toHaveBeenCalledOnce();
+      const [path, request] = vi.mocked(apiJson).mock.calls[0];
+      expect(path).toBe('/tools/incremental');
+      expect(JSON.parse(request!.body as string)).toMatchObject({
+        lang: 'en',
+        language,
+        stored_hashes: { a: 'stored' },
+      });
+    } finally {
+      dubSession.setState(() => previous);
+    }
+  },
+);
 
 it('translates the current dubbing segments with an installed local CLI agent', async () => {
   let logListener: ((event: { requestId: string; text: string }) => void) | undefined;
@@ -512,6 +553,38 @@ it('waits for preparation before transcription and preserves speaker bindings fo
     JSON.parse(vi.mocked(apiJson).mock.calls[1][1]!.body as string).segments[0].profile_id,
   ).toBe('auto:speaker00');
 });
+it.each([
+  { event: { segment: 0 }, expectedId: 'first' },
+  { event: { segment: 1 }, expectedId: 'second' },
+  { event: { segment: 1, segment_id: 'first' }, expectedId: 'first' },
+  { event: { segment: 2 }, expectedId: undefined },
+  { event: { segment: -1 }, expectedId: undefined },
+])('locates missing speech in the submitted transcript ($event)', async ({ event, expectedId }) => {
+  dubSession.setState((current) => ({
+    ...current,
+    jobId: 'missing-speech',
+    phase: 'editing',
+    segments: [
+      { id: 'first', start: 0, end: 1, text: 'First', text_original: 'First' },
+      { id: 'second', start: 1, end: 2, text: 'Second', text_original: 'Second' },
+    ],
+  }));
+  vi.mocked(apiJson).mockResolvedValueOnce({ task_id: 'failed' });
+  vi.mocked(consumeTaskStream).mockImplementationOnce(async (_path, emit) => {
+    emit({
+      type: 'error',
+      error_code: 'dub_speech_missing',
+      error: 'Could not read speech',
+      ...event,
+    });
+  });
+
+  await expect(generateDub('Spanish', 'es')).resolves.toBe(false);
+  expect(dubSession.state.event?.segment_id).toBe(expectedId);
+  expect(dubSession.state.recovery).toBeNull();
+  expect(dubSession.state.phase).toBe('editing');
+});
+
 it('a dropped preparation stream never advances to transcription or done', async () => {
   vi.mocked(consumeTaskStream).mockClear().mockRejectedValueOnce(new IncompleteTaskStreamError());
   vi.mocked(apiJson).mockResolvedValueOnce({ job_id: 'job2', task_id: 'prep2' });
@@ -1201,5 +1274,17 @@ it('says which speakers fell back to the default voice after transcription (#341
     'auto:speaker_1',
     undefined,
   ]);
+  warning.mockRestore();
+});
+
+it('warns when a cached job has no background stem (#3751)', async () => {
+  const warning = vi.spyOn(toast, 'warning').mockImplementation(() => 'toast');
+  vi.mocked(apiJson).mockResolvedValueOnce({ job_id: 'job3751', task_id: 'prep3751' });
+  vi.mocked(consumeTaskStream).mockImplementationOnce(async (_path, emit) => {
+    emit({ type: 'cached', has_bg: false, scene_count: 0 });
+    emit({ type: 'ready', duration: 4 });
+  });
+  await uploadDub(new File(['audio'], 'voice.wav', { type: 'audio/wav' }));
+  expect(warning.mock.calls.map((call) => call[0])).toEqual(['dub.bg_separation_failed']);
   warning.mockRestore();
 });

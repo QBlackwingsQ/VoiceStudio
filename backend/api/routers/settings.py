@@ -244,6 +244,50 @@ def set_offload_after_generation(body: _OffloadAfterGenerationBody):
     return _offload_after_generation_state()
 
 
+# ── OmniVoice GGUF resident server (#3654) ────────────────────────────────
+
+
+class _GgufResidentBody(BaseModel):
+    enabled: bool = Field(..., description="True to keep the GGUF runtime loaded between requests")
+
+
+def _gguf_resident_state() -> dict:
+    """`enabled` is the effective value (env > saved > off; opt-in
+    because upstream tts-server has no API key). `available` means a
+    verified tts-server binary is bundled; without one every request spawns the
+    CLI and the toggle has nothing to switch."""
+    from engines.omnivoice_gguf import resident
+
+    return {
+        "enabled": resident.resident_enabled(),
+        "env_pinned": bool(os.environ.get(resident.RESIDENT_ENV)),
+        "available": resident.server_status()[0],
+    }
+
+
+# Verifying the server binary hashes it, so refuse cross-site loads.
+@router.get("/perf/gguf-resident", dependencies=[Depends(reject_cross_site_get)])
+def get_gguf_resident():
+    """Whether the OmniVoice GGUF runtime stays loaded between requests."""
+    return _gguf_resident_state()
+
+
+@router.put("/perf/gguf-resident")
+def set_gguf_resident(body: _GgufResidentBody):
+    """Persist the toggle. Turning it off stops a running server at once."""
+    from core import prefs
+    from engines.omnivoice_gguf import resident
+
+    try:
+        prefs.set_(resident.RESIDENT_PREF, bool(body.enabled))
+    except Exception:
+        logger.exception("set_gguf_resident failed")
+        raise HTTPException(status_code=500, detail="Failed to persist setting")
+    if not resident.resident_enabled():
+        resident.stop_all()
+    return _gguf_resident_state()
+
+
 # ── Pause fill: digital silence or room tone (#3611) ──────────────────────
 
 
@@ -283,6 +327,54 @@ def set_pause_fill(body: _PauseFillBody):
         logger.exception("set_pause_fill failed")
         raise HTTPException(status_code=500, detail="Failed to persist setting")
     return _pause_fill_state()
+
+
+# ── Dub video export: encoder + maximum resolution (#3732) ────────────────
+
+
+class _VideoExportBody(BaseModel):
+    encoder: Literal["software", "hardware"] | None = Field(
+        None, description="software: libx264 (default); hardware: NVENC/QSV/AMF/VideoToolbox when available",
+    )
+    max_resolution: Literal["original", "2160p", "1440p", "1080p", "720p"] | None = Field(
+        None, description="Cap for dub exports; only ever downscales. original = no cap",
+    )
+
+
+def _video_export_state() -> dict:
+    from services import video_encoder
+    from services.ffmpeg_utils import find_ffmpeg
+
+    ffmpeg = find_ffmpeg()
+    return {
+        "encoder": video_encoder.encoder_mode(),
+        "max_resolution": video_encoder.max_resolution(),
+        "hardware_encoders": list(video_encoder.available_hw_encoders(ffmpeg)) if ffmpeg else [],
+        "resolutions": list(video_encoder.MAX_RESOLUTIONS),
+    }
+
+
+@router.get("/video-export")
+def get_video_export():
+    """How dub video exports are encoded and capped."""
+    return _video_export_state()
+
+
+@router.put("/video-export")
+def set_video_export(body: _VideoExportBody):
+    """Persist either field. Applies from the next export, no restart."""
+    from core import prefs
+    from services import video_encoder
+
+    try:
+        if body.encoder is not None:
+            prefs.set_(video_encoder.ENCODER_PREF, body.encoder)
+        if body.max_resolution is not None:
+            prefs.set_(video_encoder.MAX_RES_PREF, body.max_resolution)
+    except Exception:
+        logger.exception("set_video_export failed")
+        raise HTTPException(status_code=500, detail="Failed to persist setting")
+    return _video_export_state()
 
 
 # ── Compute-device override (Settings → Performance) ──────────────────────
