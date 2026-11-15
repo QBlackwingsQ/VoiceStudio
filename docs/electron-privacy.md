@@ -8,9 +8,25 @@
 
 Settings > Privacy exposes the existing invisible-watermark setting, analytics consent and generation-history retention.
 
+Diagnostic bundles and prefilled bug reports scrub known credential query
+parameters, including share PINs, API keys and passwords. The backend and
+Electron report builder also recognize percent-encoded parameter names, preserve
+unrelated query parameters, and do not treat a substring such as `spin` as `pin`.
+Quoted credential values, including log-escaped quotes, are removed in full. Query scanning uses a finite
+known-name bound so malformed log lines cannot trigger repeated suffix scans.
+Enclosing URL bounds are verified from structured JSON or the complete URI
+token; ambiguous quoted tails are redacted conservatively.
+
 Watermark controls appear when the backend reports AudioSeal available and affect new audio through the existing marking path. No audio producer bypasses `mark_synthetic`. Analytics consent uses the existing backend opt-in endpoint and remains unchanged until the user explicitly switches it. After consent, the renderer records fixed screen labels and workflow action labels (clone, design, dubbing, transcription); the backend records lifecycle/error events. Privacy-safe pageviews use fixed app paths under `app.voicestudio.sh`, giving aggregate screen counts without sending renderer URLs or dynamic route segments. The renderer never contacts the analytics service itself: it hands allowlisted events to the local backend, which forwards them only while consent is on. Uncaught renderer errors are reduced to a coarse class and stage; no message, stack, credential, home path, text, audio, filename, or user-named content is sent. Raw exception autocapture, DOM autocapture, automatic pageviews, and session recordings remain disabled. Unavailable features do not display inert toggles, and failed saves preserve confirmed state.
 
 The analytics destination is the public Supermetry site id in `config/analytics.json` (host `https://app.supermetry.com`); every build uses it, and `SUPERMETRY_SITE_ID` / `SUPERMETRY_HOST` override it for developers. Nothing is baked in at build time.
+
+Optional VoiceStudio Cloud sign-in validates the discovery issuer and binds its
+token and revocation endpoints to that issuer's origin and HTTP(S) protocol.
+Missing endpoints, different hosts or ports, and embedded-origin schemes such as
+`blob:` are refused before credentials are sent. HTTPS is required outside the
+explicit local development configuration; redirects remain disabled. Account
+features stay off until enabled, independently of analytics consent.
 
 Translation privacy classification is shared with Tauri. Unknown or unavailable backend data does not claim offline operation. The existing `libretranslate` identifier is an alias for the backend's local Argos branch, not an assumption about an external LibreTranslate service. The Translation link opens engine settings.
 
