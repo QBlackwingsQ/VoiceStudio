@@ -1337,6 +1337,9 @@
     "terminal_command_added": "Toegevoegd. Open een nieuw terminalvenster om voicestudio te gebruiken.",
     "terminal_command_failed": "voicestudio kon niet aan de terminal worden toegevoegd. Controleer of je thuismap niet alleen-lezen is en probeer het opnieuw.",
     "terminal_command_conflict": "{{path}} hoort bij een andere installatie, dus VoiceStudio heeft het niet gewijzigd.",
+    "close_to_tray": "Blijven draaien in het systeemvak bij sluiten",
+    "close_to_tray_desc": "Bij het sluiten van het venster verdwijnt VoiceStudio naar het systeemvak in plaats van af te sluiten, zodat lopende taken doorgaan. Open het opnieuw via het pictogram in het systeemvak en kies daar Afsluiten om te stoppen. Op sommige Linux-desktops heeft het pictogram AppIndicator-ondersteuning nodig; VoiceStudio opnieuw starten opent het venster ook weer.",
+    "close_to_tray_failed": "Deze instelling kon niet worden opgeslagen. Probeer het opnieuw.",
     "review_mode_on": "Beoordeling",
     "review_mode_off": "Snelvuur",
     "translate_agent": "Agent geschikt",
@@ -1732,6 +1735,8 @@
     "lineVoice": "Regelstem",
     "chapterHeading": "Hoofdstuktitel",
     "lineActions": "Regelacties",
+    "mergeNext": "Samenvoegen met volgende",
+    "mergeNextHint": "Voeg aangrenzende regels samen met dezelfde spreker, stemoverschrijving en snelheidsinstelling.",
     "autocastDone_one": "{{lines}} regels toegewezen aan {{count}} stem",
     "autocastDone_other": "{{lines}} regels verdeeld over {{count}} stemmen",
     "recovery_title": "Onderbroken verhaal",
@@ -1868,7 +1873,12 @@
     "recovery_busy": "Er loopt al een andere render. Hervat zodra die klaar is.",
     "cast_note_one": "{{names}} heeft nog geen stem en wordt met de hoofdstem gelezen. Kies er een onder Cast.",
     "cast_note_other": "{{names}} hebben nog geen stem en worden met de hoofdstem gelezen. Kies stemmen onder Cast.",
-    "line_gap": "Stilte tussen regels"
+    "line_gap": "Stilte tussen regels",
+    "result_other_connection": "Dit opgeslagen audiobestand hoort bij een andere VoiceStudio-verbinding. Schakel terug naar die verbinding om het af te spelen.",
+    "result_connection_unknown": "Verbind je lokale engine of externe computer om opgeslagen audio te tonen.",
+    "result_legacy": "Bij dit oudere opgeslagen resultaat is geen verbinding vastgelegd. Zoek op deze verbinding naar de bestandsnaam; het kan om een ander bestand gaan.",
+    "result_check_audio": "Opgeslagen audio op deze verbinding controleren",
+    "result_recovery_failed": "De opgeslagen audio is niet beschikbaar op deze verbinding. Schakel terug naar de oorspronkelijke verbinding of genereer de audio opnieuw."
   },
   "credentials": {
     "microsoft_key": "Microsoft Translator-sleutel",
@@ -3611,7 +3621,7 @@
       "notifications": "Meldingen",
       "notifications_help": "Geef een melding wanneer een nasynchronisatie klaar is. Meldingen worden op deze telefoon aangemaakt; er gaat niets via een clouddienst.",
       "privacy": "Privacy",
-      "privacy_help": "Deze app praat alleen met de VoiceStudio-server die je hebt gekoppeld. Geen accounts, geen verwerking in de cloud.",
+      "privacy_help": "Taken op het apparaat blijven op deze telefoon. Modeldownloads, rapporten die je zelf verstuurt en je gekoppelde computer gebruiken het netwerk. Automatische diagnostische metadata worden pas via het netwerk verstuurd na afzonderlijke toestemming.",
       "about": "Over",
       "version": "Versie {{version}}",
       "licenses": "Open-sourcelicenties"
@@ -3664,7 +3674,7 @@
       "dictation_setup": "Dicteren is niet beschikbaar. Installeer en accepteer op de host een ASR-model. Verbind voor toegang op afstand opnieuw met een API-sleutel of via een vertrouwd netwerk; een deel-PIN alleen kan dicteren niet autoriseren.",
       "host_label": "Serverlabel",
       "theme_preview": "Voorbeeld van uiterlijk",
-      "analytics_local": "Deze companion-app slaat je keuze op deze telefoon op. Er worden geen analysegegevens verzonden.",
+      "analytics_local": "Deze telefoon verstuurt geen gebruiksanalyses; je keuze wordt lokaal opgeslagen. Automatische diagnostische rapporten vereisen afzonderlijke toestemming.",
       "model_licenses": "Modellicenties op je host bekijken",
       "stage_upload": "Media uploaden",
       "stage_prepare": "Media voorbereiden op host",
@@ -3717,7 +3727,7 @@
       "upload_pending": "De upload gaat op de achtergrond door. Laat VoiceStudio op je computer draaien.",
       "upload_resume": "Bewaking hervatten",
       "upload_failed": "Upload mislukt. Verbind opnieuw met dezelfde host en selecteer de media opnieuw.",
-      "privacy_local": "De voorkeur voor analyse wordt op dit apparaat opgeslagen. Deze versie verzendt nooit analysegegevens.",
+      "privacy_local": "Deze telefoon verstuurt geen gebruiksanalyses; je keuze wordt lokaal opgeslagen. Automatische diagnostische rapporten vereisen afzonderlijke toestemming.",
       "transcript": "Transcript",
       "qr_unavailable": "Camera is niet beschikbaar. Voer het hostadres handmatig in.",
       "language_system": "Systeemtaal",
@@ -3770,7 +3780,7 @@
       "capture_slow": "Deze telefoon kon microfoonaudio niet snel genoeg verwerken. Sluit andere apps of gebruik je computer.",
       "preset_voice": "Stem {{number}}",
       "transfer": "{{received}} van {{total}}",
-      "privacy": "Taken op het apparaat blijven op deze telefoon. Alleen modeldownloads, meldingen die je zelf verstuurt en je gekoppelde computer gebruiken het netwerk.",
+      "privacy": "Taken op het apparaat blijven op deze telefoon. Modeldownloads, rapporten die je zelf verstuurt en je gekoppelde computer gebruiken het netwerk. Automatische diagnostische metadata worden pas via het netwerk verstuurd na afzonderlijke toestemming.",
       "computer_feature": "Deze functie draait momenteel op je computer. Je kunt Spraak en Dicteren op deze telefoon gebruiken zonder te koppelen.",
       "accepted": "Licentie geaccepteerd",
       "not_accepted": "Licentie niet geaccepteerd",
@@ -3834,7 +3844,7 @@
       "download_one": "{{name}} · download van {{size}}"
     },
     "consent": {
-      "phone_note": "Opgeslagen op deze telefoon. Er wordt niets verzonden."
+      "phone_note": "Je keuze voor gebruiksanalyses wordt op deze telefoon opgeslagen. Automatische diagnostische rapporten vereisen afzonderlijke toestemming."
     },
     "report": {
       "action": "Melden",
@@ -4317,5 +4327,14 @@
       "failed": "Mislukt",
       "cancelled": "Geannuleerd"
     }
+  },
+  "diagnostics": {
+    "title": "Automatische foutrapporten",
+    "body": "Stuur technische rapporten over crashes en mislukte installaties of generaties naar Supermetry, met app- en apparaatgegevens, foutcodes, locaties in de appcode en een willekeurige installatie-ID. Je audio, tekst, bestanden, namen, inloggegevens en logboeken worden nooit verstuurd. Dit staat los van gebruiksanalyses en is standaard uitgeschakeld. Je kunt het altijd uitschakelen bij Privacy.",
+    "allow": "Foutrapporten toestaan",
+    "keep_off": "Rapporten uitgeschakeld houden",
+    "unavailable": "Automatische rapporten zijn niet beschikbaar of uitgeschakeld voor deze app.",
+    "managed": "Beheer deze keuze in de desktopapp die met deze browser is verbonden.",
+    "save_failed": "Deze keuze kon niet worden opgeslagen. Probeer het opnieuw."
   }
 }

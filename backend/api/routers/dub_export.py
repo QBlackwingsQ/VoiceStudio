@@ -14,7 +14,7 @@ import zipfile
 from functools import partial
 from pathlib import Path, PureWindowsPath
 from tempfile import TemporaryFile
-from typing import Annotated, BinaryIO, Optional
+from typing import Annotated, Any, BinaryIO, Optional
 
 from core.config import DUB_DIR
 from core.http_headers import content_disposition
@@ -22,6 +22,7 @@ from core.logging_utils import log_safe
 from core.path_security import UnsafePath, portable_filename, resolve_within
 from core.tasks import task_manager
 from fastapi import APIRouter, Header, HTTPException, Query, Request, Response, Depends
+from pydantic import BaseModel
 from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse
 from starlette.concurrency import iterate_in_threadpool, run_in_threadpool
 from starlette.types import Receive, Scope, Send
@@ -47,6 +48,7 @@ from services.video_retime import (
 from api.routers.dub_core import _get_job, _safe_lang_or_400
 from schemas.requests import ProsodyMirrorRequest
 from core.browser_guard import reject_cross_site_get
+from core.scrub import scrub_text
 
 router = APIRouter()
 logger = logging.getLogger("omnivoice.api")
@@ -258,9 +260,17 @@ def _native_save(source: str, destination: str, display_name: str, media_type: s
         os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
         shutil.copy2(source, dest)
     except PermissionError as e:
-        raise HTTPException(status_code=403, detail=f"Permission denied: {e}")
+        # Fixed text on purpose: an OS error names the path, and Windows escapes
+        # its separators, which is the one shape scrub_text cannot match.
+        raise HTTPException(
+            status_code=403,
+            detail="Permission denied writing to the export folder. Choose one you can write to.",
+        ) from e
     except OSError as e:
-        raise HTTPException(status_code=500, detail=f"Copy failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="The file could not be copied. Check the destination folder and free space.",
+        ) from e
     if not os.path.exists(dest) or os.path.getsize(dest) == 0:
         raise HTTPException(status_code=500, detail="Copy produced empty file at destination")
     logger.info("Native save completed (%d bytes)", os.path.getsize(dest))
@@ -355,23 +365,38 @@ async def get_job(job_id: str):
     return row
 
 
+class PersistedJobEvent(BaseModel):
+    seq: int
+    created_at: float
+    payload: str
+
+
+class JobEventWatermark(BaseModel):
+    seq: int
+    created_at: Optional[float]
+
+
+class PersistedJobEvents(BaseModel):
+    job: dict[str, Any]
+    events: list[PersistedJobEvent]
+    event_watermark: JobEventWatermark
+
+
 @router.get("/jobs/{job_id}/events")
-async def list_job_events(job_id: str, after_seq: int = 0, limit: int = 500):
-    """Persisted SSE tail. Strict ascending seq so the client can stitch
-    it onto a live feed (which starts above the last returned seq).
+async def list_job_events(job_id: str, after_seq: int = 0, limit: int = 500) -> PersistedJobEvents:
+    """A bounded ascending SSE page and true retained-tail watermark.
+
+    Job, page and watermark share one read snapshot. The watermark is not
+    limited by the page, so it can fence older history before a live feed.
     """
     from core import job_store
-    row = job_store.get(job_id)
-    if not row:
+    page = await run_in_threadpool(job_store.event_page, job_id, after_seq, limit)
+    if page is None:
         raise HTTPException(
             status_code=404,
             detail="No job with that id. It may have expired, been deleted, or the server restarted before it was persisted — check the dub history in the sidebar.",
         )
-    limit = max(1, min(2000, int(limit)))
-    return {
-        "job": row,
-        "events": job_store.events_since(job_id, after_seq=after_seq, limit=limit),
-    }
+    return PersistedJobEvents(**page)
 
 
 @router.post("/tasks/cancel/{task_id}")
@@ -1460,7 +1485,7 @@ async def dub_preview_video(
             _discard_tmp()
             raise HTTPException(
                 status_code=500,
-                detail=f"ffmpeg failed to build the preview stream: {str(e)[:300]}. This usually means the source video can't be re-encoded on the fly — try downloading the MP4 instead.",
+                detail=f"ffmpeg failed to build the preview stream: {scrub_text(str(e))[:300]}. This usually means the source video can't be re-encoded on the fly — try downloading the MP4 instead.",
             )
         finally:
             if retime_decision is not None and retime_decision.mode == "file":
@@ -1560,7 +1585,7 @@ async def dub_get_onsets(job_id: str):
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Onset analysis failed: {str(e)[:200]}",
+            detail=f"Onset analysis failed: {scrub_text(str(e))[:200]}",
         )
 
     payload = {"onsets": onsets, "peaks": peaks, "source": source, "channel_analysis": "max_abs_v1"}
@@ -1795,7 +1820,7 @@ async def dub_qc_pass(job_id: str, lang: str = Query(None), drift_threshold: flo
         if isinstance(e, ModelLicenceNotAccepted):
             raise  # typed 403 via the app handler (#2689)
         logger.exception("dub QC ASR pass failed")
-        raise HTTPException(status_code=500, detail=f"QC transcription failed: {e}")
+        raise HTTPException(status_code=500, detail=f"QC transcription failed: {scrub_text(str(e))}")
 
     seg_ids = job.get("seg_order") or [s.get("id", i) for i, s in enumerate(segments)]
     scored = dub_qc.score_dub(scored_segments, recognized, drift_threshold=drift_threshold, seg_ids=seg_ids)

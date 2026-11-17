@@ -130,7 +130,8 @@ final class PhoneScreens: XCTestCase {
         let app = launch()
         app.buttons["Models"].tapReady(); app.buttons["choice.option.kokoro-multi-int8"].tapReady()
         app.buttons["Voice"].tapReady()
-        let search = app.textFields.firstMatch
+        XCTAssertTrue(app.navigationBars["Voice"].waitForExistence(timeout: uiReadyTimeout))
+        let search = app.textFields["search.field"]
         XCTAssertTrue(search.waitForExistence(timeout: uiReadyTimeout)); search.tapReady(); search.typeText("Voice 103")
         app.buttons["choice.option.102"].tapReady()
         XCTAssertEqual(app.buttons["Voice"].value as? String,"Voice 103")
@@ -182,6 +183,8 @@ final class PhoneScreens: XCTestCase {
     }
     @MainActor func testCompactDownloadsUseProductNamesAndOneDubAction() {
         let app = launch()
+        // A previous test may leave a different persisted model, including on failure.
+        app.buttons["Models"].tapReady(); app.buttons["choice.option.kitten-mini-en-fp16"].tapReady()
         XCTAssertEqual(app.buttons.matching(identifier: "models.get").count, 1)
         XCTAssertFalse(app.staticTexts["kitten-mini-en-fp16"].exists)
         XCTAssertTrue(app.buttons["models.open"].label.contains("Kitten"))
@@ -249,13 +252,13 @@ final class PhoneScreenshotTour: XCTestCase {
     }
     @MainActor func testPhoneFirstScreens() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-smoke","-AppleLanguages","(en)"]
-        app.launch(); XCTAssertTrue(app.buttons["consent.no"].waitForExistence(timeout: uiReadyTimeout)); XCTAssertTrue(app.staticTexts["This companion app records your choice on this phone. It sends no analytics."].exists); capture("Consent",app); app.declineConsent(); capture("Home",app); app.openSpeak()
+        app.launch(); XCTAssertTrue(app.buttons["consent.no"].waitForExistence(timeout: uiReadyTimeout)); XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label == %@", "Usage analytics are not sent from this phone; your choice is stored locally. Automatic diagnostic reports have a separate opt-in.")).firstMatch.exists); capture("Consent",app); app.declineConsent(); capture("Home",app); app.openSpeak()
         XCTAssertTrue(app.textViews["speak.text"].waitForExistence(timeout: uiReadyTimeout)); capture("Speak-phone",app)
-        app.tabButton("Voices").tapReady(); capture("Voices-phone",app)
+        guard app.selectTab("Voices") else { return }; capture("Voices-phone",app)
         app.buttons["voices.create"].tapReady(); XCTAssertTrue(app.textFields["voices.clone.name"].waitForExistence(timeout: uiReadyTimeout)); capture("Clone-phone",app); app.buttons["Cancel"].tapReady()
-        app.tabButton("Dub").tapReady(); XCTAssertEqual(app.buttons.matching(identifier: "models.get").count, 1); capture("Dub-phone",app)
-        app.tabButton("Dictate").tapReady(); capture("Dictate-phone",app)
-        app.tabButton("Settings").tapReady(); capture("Settings",app)
+        guard app.selectTab("Dub") else { return }; XCTAssertEqual(app.buttons.matching(identifier: "models.get").count, 1); capture("Dub-phone",app)
+        guard app.selectTab("Dictate") else { return }; capture("Dictate-phone",app)
+        guard app.selectTab("Settings") else { return }; capture("Settings",app)
         app.buttons["settings.palette.light"].tapReady()
         XCTAssertTrue(app.buttons["choice.option.default"].waitForExistence(timeout: uiReadyTimeout)); capture("Palette-picker",app); closeSheet("Light palette",app)
         let language = app.buttons["settings.language"]
@@ -276,12 +279,12 @@ final class PhoneScreenshotTour: XCTestCase {
     @MainActor func testPairedComputerScreens() {
         let app = XCUIApplication(); app.launchArguments = ["--ui-smoke","-AppleLanguages","(en)"]
         app.launch(); app.declineConsent()
-        app.tabButton("Settings").tapReady()
+        guard app.selectTab("Settings") else { return }
         openSettingsPage(app.buttons["settings.connect"], destination: app.buttons["Enter address"], app)
         app.buttons["Enter address"].tapReady()
         let address = app.textFields["connect.url"]; address.tapReady(); address.typeText("http://127.0.0.1:3900")
         app.buttons["keyboard.done"].tapReady(); app.buttons["connect.submit"].tapReady(); app.openSpeak()
         XCTAssertTrue(app.textViews["speak.text"].waitForExistence(timeout: uiReadyTimeout)); capture("Speak-computer",app)
-        for tab in ["Voices","Dub","Dictate"] { app.tabButton(tab).tap(); capture(tab+"-computer",app) }
+        for tab in ["Voices","Dub","Dictate"] { guard app.selectTab(tab) else { return }; capture(tab+"-computer",app) }
     }
 }

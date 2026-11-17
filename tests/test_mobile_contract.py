@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 CONTRACT = ROOT / "mobile" / "contract"
@@ -36,6 +37,28 @@ def test_openapi_operation_ids_are_unique():
     schema = json.loads((CONTRACT / "openapi.json").read_text(encoding="utf-8"))
     ids = [op["operationId"] for ops in schema["paths"].values() for op in ops.values() if "operationId" in op]
     assert len(ids) == len(set(ids))
+
+
+def test_workflow_does_not_cancel_a_running_main_build():
+    """A push to main must not cancel the mobile verification that is still running.
+
+    `mobile.yml` is the release gate for both native apps. With an unconditional
+    `cancel-in-progress`, two merges in quick succession cancel the first run's
+    iOS and Android builds: the apps are then unverified, and the run that would
+    have said so is gone rather than failed. Pull requests keep cancelling their
+    own superseded runs.
+    """
+    workflow = yaml.safe_load((ROOT / ".github/workflows/mobile.yml").read_text(encoding="utf-8"))
+    cancel = str(workflow["concurrency"]["cancel-in-progress"]).strip()
+    # Compare the whole expression: a substring check would also accept the
+    # inverted condition, which cancels main builds and keeps superseded pull
+    # request runs alive.
+    assert cancel == "${{ github.event_name == 'pull_request' }}", (
+        "main pushes must not cancel a running mobile build; cancel-in-progress must be "
+        f"exactly the pull-request condition, not {cancel!r}"
+    )
+    assert "github.ref" in workflow["concurrency"]["group"]
+
 
 
 def _bun() -> str | None:
@@ -132,6 +155,72 @@ def _mobile_models_source():
 
 def _mobile_licenses():
     return mobile_models.read_json(ROOT / "docs/licensing/model-license-data.json")
+
+
+def _git_attr(path: Path, *attributes: str) -> dict[str, str]:
+    """`git check-attr` for one path, or {} when git cannot answer."""
+    try:
+        result = subprocess.run(
+            ["git", "check-attr", *attributes, "--", str(path.relative_to(ROOT))],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return {}
+    if result.returncode != 0:
+        return {}
+    values: dict[str, str] = {}
+    for line in result.stdout.splitlines():
+        try:
+            _, attribute_name, value = line.rsplit(": ", 2)
+        except ValueError:
+            continue
+        values[attribute_name] = value
+    return values
+
+
+def test_mobile_contract_artifacts_are_pinned_to_lf():
+    """Contract artifacts whose bytes are compared must check out as LF everywhere.
+
+    `mobile/contract/tts/zipvoice-lexicon.txt` is pinned by SHA-256 over its raw
+    bytes (models.source.json → files[].bundled), and the generated catalogue,
+    token and design artifacts are compared byte-for-byte by this module and by
+    `scripts/export-mobile-tokens.ts --check`. Git's Windows default
+    (core.autocrlf=true) rewrites an unpinned text file to CRLF on checkout, so
+    identical content is reported stale and the bundled asset fails its pin —
+    on Windows only, which reads as drift when nothing drifted.
+    """
+    if shutil.which("git") is None:
+        pytest.skip("git is required to read .gitattributes")
+    pinned = {
+        CONTRACT / "openapi.json",
+        CONTRACT / "models.json",
+        CONTRACT / "design.json",
+        CONTRACT / "tokens.json",
+        ROOT / "mobile/ios/VoiceStudioKit/Sources/VoiceStudioKit/Theme/Tokens.generated.swift",
+        ROOT
+        / "mobile/android/core/designsystem/src/main/kotlin/com/voicestudio/mobile/designsystem"
+        / "Tokens.generated.kt",
+    }
+    for model in _mobile_models_source()["models"]:
+        for file in model["files"]:
+            if file.get("bundled"):
+                pinned.add(CONTRACT / file["bundled"])
+
+    unpinned = []
+    for path in sorted(pinned):
+        attributes = _git_attr(path, "text", "eol")
+        if attributes.get("eol") != "lf":
+            unpinned.append(f"{path.relative_to(ROOT)} (eol={attributes.get('eol')!r})")
+    assert not unpinned, (
+        "Hash- or byte-compared mobile contract artifacts need a `text eol=lf` rule in "
+        ".gitattributes, or Windows checkouts change their bytes:\n  " + "\n  ".join(unpinned)
+    )
+    # The bundled asset is present and is the LF blob the catalogue pins.
+    lexicon = CONTRACT / "tts" / "zipvoice-lexicon.txt"
+    assert lexicon.is_file(), "the pinned bundled lexicon is missing"
 
 
 def test_mobile_models_generated_catalogue_is_current(monkeypatch):

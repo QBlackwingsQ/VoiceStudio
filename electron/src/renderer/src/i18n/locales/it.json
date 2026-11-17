@@ -1339,6 +1339,9 @@
     "terminal_command_added": "Aggiunto. Apri una nuova finestra del terminale per usare voicestudio.",
     "terminal_command_failed": "Impossibile aggiungere voicestudio al terminale. Verifica che la cartella home non sia di sola lettura, poi riprova.",
     "terminal_command_conflict": "{{path}} appartiene a un'altra installazione, quindi VoiceStudio non l'ha modificato.",
+    "close_to_tray": "Continua in esecuzione nell’area di notifica alla chiusura",
+    "close_to_tray_desc": "Chiudendo la finestra VoiceStudio si nasconde nell’area di notifica invece di uscire, quindi le attività in corso continuano. Riaprilo dall’icona nell’area di notifica e scegli Esci da lì per chiuderlo. Su alcuni desktop Linux l’icona richiede il supporto AppIndicator; riavviare VoiceStudio riapre comunque la finestra.",
+    "close_to_tray_failed": "Impossibile salvare questa impostazione. Riprova.",
     "review_mode_on": "Recensione",
     "review_mode_off": "Fuoco rapido",
     "translate_agent": "Agente in forma",
@@ -1733,6 +1736,8 @@
     "lineVoice": "Voce della riga",
     "chapterHeading": "Titolo del capitolo",
     "lineActions": "Azioni della riga",
+    "mergeNext": "Unisci con il successivo",
+    "mergeNextHint": "Unisci righe adiacenti con lo stesso parlante, la stessa voce sostitutiva e la stessa impostazione di velocità.",
     "autocastDone_one": "{{lines}} righe assegnate a {{count}} voce",
     "autocastDone_other": "{{lines}} righe assegnate a {{count}} voci",
     "recovery_title": "Storia interrotta",
@@ -1870,7 +1875,12 @@
     "cast_note_other": "{{names}} non hanno ancora una voce, quindi vengono letti con la voce principale. Scegli le voci in Cast.",
     "line_gap": "Intervallo tra le righe",
     "paragraph_gap": "Intervallo tra i paragrafi",
-    "trim_edges": "Taglia i silenzi del motore"
+    "trim_edges": "Taglia i silenzi del motore",
+    "result_other_connection": "Questo audio salvato appartiene a un’altra connessione VoiceStudio. Torna a quella connessione per riprodurlo.",
+    "result_connection_unknown": "Collega il motore locale o il computer remoto per visualizzare l’audio salvato.",
+    "result_legacy": "Questo vecchio risultato salvato non contiene informazioni sulla connessione. Cerca il suo nome file su questa connessione; potrebbe trattarsi di un file diverso.",
+    "result_check_audio": "Verifica l’audio salvato su questa connessione",
+    "result_recovery_failed": "L’audio salvato non è disponibile su questa connessione. Torna alla connessione originale oppure generalo di nuovo."
   },
   "credentials": {
     "microsoft_key": "Chiave del traduttore Microsoft",
@@ -3613,7 +3623,7 @@
       "notifications": "Notifiche",
       "notifications_help": "Avvisa quando un doppiaggio è completato. Le notifiche vengono create su questo telefono; nulla passa da un servizio cloud.",
       "privacy": "Privacy",
-      "privacy_help": "Questa app comunica solo con il server VoiceStudio che hai associato. Nessun account, nessuna elaborazione nel cloud.",
+      "privacy_help": "Le attività locali restano su questo telefono. I download dei modelli, le segnalazioni che scegli di inviare e il computer associato usano la rete. I metadati diagnostici automatici usano la rete solo dopo un consenso separato.",
       "about": "Informazioni",
       "version": "Versione {{version}}",
       "licenses": "Licenze open source"
@@ -3666,7 +3676,7 @@
       "dictation_setup": "La dettatura non è disponibile. Sull'host installa e accetta un modello ASR. Per l'accesso remoto, riconnettiti con una chiave API o una rete attendibile; un PIN di condivisione da solo non può autorizzare la dettatura.",
       "host_label": "Nome del server",
       "theme_preview": "Anteprima dell'aspetto",
-      "analytics_local": "Questa app companion salva la tua scelta su questo telefono. Non invia dati analitici.",
+      "analytics_local": "Questo telefono non invia statistiche di utilizzo; la tua scelta viene salvata localmente. Le segnalazioni diagnostiche automatiche richiedono un consenso separato.",
       "model_licenses": "Consulta le licenze dei modelli sull'host",
       "stage_upload": "Caricamento dei contenuti",
       "stage_prepare": "Preparazione dei contenuti sull'host",
@@ -3719,7 +3729,7 @@
       "upload_pending": "Il caricamento continua in background. Lascia VoiceStudio in esecuzione sul computer.",
       "upload_resume": "Riprendi monitoraggio",
       "upload_failed": "Caricamento non riuscito. Riconnettiti allo stesso host e seleziona di nuovo i contenuti.",
-      "privacy_local": "La preferenza sui dati analitici è salvata su questo dispositivo. Questa versione non invia mai dati analitici.",
+      "privacy_local": "Questo telefono non invia statistiche di utilizzo; la tua scelta viene salvata localmente. Le segnalazioni diagnostiche automatiche richiedono un consenso separato.",
       "transcript": "Trascrizione",
       "qr_unavailable": "La fotocamera non è disponibile. Inserisci manualmente l'indirizzo dell'host.",
       "language_system": "Lingua di sistema",
@@ -3772,7 +3782,7 @@
       "capture_slow": "Questo telefono non ha elaborato l'audio del microfono abbastanza in fretta. Chiudi altre app o usa il computer.",
       "preset_voice": "Voce {{number}}",
       "transfer": "{{received}} di {{total}}",
-      "privacy": "Le attività sul dispositivo restano su questo telefono. Solo i download dei modelli, le segnalazioni che scegli di inviare e il computer associato usano la rete.",
+      "privacy": "Le attività locali restano su questo telefono. I download dei modelli, le segnalazioni che scegli di inviare e il computer associato usano la rete. I metadati diagnostici automatici usano la rete solo dopo un consenso separato.",
       "computer_feature": "Questa funzione al momento viene eseguita sul computer. Voce sintetica e Dettatura funzionano su questo telefono senza associazione.",
       "accepted": "Licenza accettata",
       "not_accepted": "Licenza non accettata",
@@ -3836,7 +3846,7 @@
       "download_one": "{{name}} · download di {{size}}"
     },
     "consent": {
-      "phone_note": "Salvato su questo telefono. Non viene inviato nulla."
+      "phone_note": "La tua scelta sulle statistiche viene salvata su questo telefono. Le segnalazioni diagnostiche automatiche richiedono un consenso separato."
     },
     "report": {
       "action": "Segnala",
@@ -4319,5 +4329,14 @@
       "failed": "Non riuscito",
       "cancelled": "Annullato"
     }
+  },
+  "diagnostics": {
+    "title": "Segnalazioni automatiche degli errori",
+    "body": "Invia a Supermetry segnalazioni tecniche su arresti anomali ed errori di installazione o generazione, con informazioni su app e dispositivo, codici di errore, posizioni nel codice e un identificativo di installazione casuale. Non invia mai audio, testo, file, nomi, credenziali o registri. È separato dalle statistiche di utilizzo e disattivato per impostazione predefinita. Puoi disattivarlo in qualsiasi momento in Privacy.",
+    "allow": "Consenti le segnalazioni degli errori",
+    "keep_off": "Mantieni le segnalazioni disattivate",
+    "unavailable": "Le segnalazioni automatiche non sono disponibili o sono disattivate per questa app.",
+    "managed": "Gestisci questa scelta nell’app desktop collegata a questo browser.",
+    "save_failed": "Impossibile salvare questa scelta. Riprova."
   }
 }

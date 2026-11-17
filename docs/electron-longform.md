@@ -10,11 +10,59 @@ Stories and Audiobook are available from the sidebar and command search. Each ke
 
 Plain-text audiobook imports recognize chapter-title lines with LF, CRLF or CR line endings. Manuscripts with existing Markdown H1 headings retain their explicit structure and original text.
 
+In Stories, a line's **Merge with next** action joins it to the following line
+when both have the same speaker, voice override and speed setting. Different
+explicit choices stay separate, even when they currently resolve to the same
+voice or speed. Chapter headings and busy editors cannot be merged. The first
+line keeps its identity and settings, both texts remain in order, and plain
+prose becomes one spoken passage. Bracket-bearing text gets a visible `[voice:]`
+reset at the former boundary so inline voice, emotion, prosody and pause scopes
+remain independent. The merged line saves with the draft and named project.
+
 Both editors use the shared longform backend, real chapter progress, assembly status, and an explicit Stop action. Progress moves with every synthesized chunk, not only at chapter boundaries: the backend streams live `progress` events (book-wide fraction, time left, realtime factor and mean chunk time; not stored in job history), and the tracker shows the percentage, elapsed time, time left and the realtime factor (seconds of audio produced per second of rendering). Time left comes from the rolling rate of the most recent freshly synthesized chunks; chapters and lines served from cache move the bar but never the rate, so a resumed render does not look instantly done. If no chunk lands for six typical chunk times (at least two minutes; ten before the first chunk, which can include a model load) the tracker says the render looks stalled and points at Logs → Backend. The elapsed clock survives leaving and reopening the page. Older backends without `progress` events fall back to the chapter-count estimate, which ignores cached chapters. Stop aborts the HTTP stream so the backend stops scheduling chapters. A truncated stream cannot replace the last successful output. Interrupted server manifests can be resumed explicitly without sending the edited manuscript again. Each page lists only its own interrupted renders (stories on Stories, books on Audiobook), one card per project with the newest manifest; a disabled Resume says why (text-to-speech not ready, or another render running), and Dismiss hides that project's cards on this device. Navigation leaves a render running; a renderer restart disconnects it and recovery uses the server manifest inventory.
 
 Generation is separate from playback and export. Vidstack provides the player, with a seek bar instead of decoding a full waveform for long audio; Play becomes available after the native media provider reports that it is ready. The existing backend produces MP3 and M4B, and the native export dialog saves a local copy. A completed render also offers a cue sheet through that dialog: a `.txt` file with one `HH:MM:SS<TAB>Title` line per rendered chapter. This is useful for show notes, podcast services, and players that ignore embedded chapters—M4B embeds them, while MP3 cannot. The timestamps sum the same whole-millisecond chapter durations used for the M4B metadata, so their whole-second, unbounded-hour values match the embedded starts. Failed chapters add neither a line nor elapsed time.
 
 Draft writes reuse the coalesced persistence helper and flush on lifecycle events. Working drafts currently use browser storage. Named Stories and Audiobook projects use the shared native IndexedDB adapter in a separate Electron database. Saves await the committed transaction, concurrent writes are serialized, and opening or deleting a project requires confirmation. Projects include script/lines, voices, settings and the last output reference. Storage failures are surfaced. Book details include author, narrator, year, genre, description and an uploaded JPEG/PNG cover. Loudness offers off, ACX and podcast presets. Audiobook pronunciation rows reach the existing lexicon engine; duplicate words are flagged before rendering. These settings persist with the draft. Full cast management and other advanced controls remain tracked in `electron/PARITY.md`.
+
+### Saved audio and connections
+
+Completed Stories and Audiobook results stay with the VoiceStudio connection
+that rendered them. Switching to another local data directory or remote computer
+keeps the editable text and each connection's latest result; its player appears
+only when that connection is selected and ready. A verified, app-managed local
+data directory has an opaque identifier, so local port changes retain its
+result. Attached or otherwise unverified local directories use the current
+connection only: a fresh render remains usable, while a restart or reload needs
+an explicit check for older audio. Identity discovery never delays backend
+readiness. Opening or starting another project replaces the current
+workspace's result slots without deleting saved projects or rendered files.
+
+Older results and imported projects whose connection is unknown keep their
+saved details without automatically requesting audio. Use **Check saved audio on
+this connection** to check that filename through the current authenticated
+connection. This checks availability only: a matching filename may contain a
+different file. The warning and original saved details remain available after a
+successful check, including after reopening the app. No request goes directly
+to a previous connection. A connection change, authentication reset, new render,
+new project or data reset cancels a pending check, and its late reply cannot adopt
+the result. Restoring a valid session for the same connection makes its saved
+result available again.
+
+Connection records stay in private local draft persistence without local data
+paths or credentials. Older path-based records lose their automatic association
+but retain their saved result details for an explicit availability check. Saving
+a named project retains its result details even when another connection hides
+the player; replacing that workspace from a dub still asks before discarding it.
+Home does not open a project over an active Stories or Audiobook render.
+Named projects carry
+only an opaque result-owner token, not connection endpoints, local data paths,
+credentials or other connections' cached results. Availability-only results carry
+no ownership token in a named project; reopening that project requires another
+explicit availability check. The app's private working session keeps its checked
+state and warning across reloads. An unknown token requires the same explicit
+availability check. This behavior does not establish the cause of
+an interrupted render or a slow generation.
 
 `electron/tests/longform-smoke.mjs` verifies the main flows with mocked generation and real audio playback. Runtime tests cover stop, duplicate prevention, truncated responses, explicit resume and shared Stories compilation. Real installed-model verification passed for one English chapter: MP3 rendering, cached WAV chapter audition, and Electron-driven M4B rendering/playback. Multi-voice, multi-chapter, cancellation/recovery and other engines still require real runtime coverage.
 

@@ -1,3 +1,11 @@
+import {
+  decideTerminalStop,
+  decideWindowClose,
+  needsRestore,
+  readCloseToTray,
+  saveCloseToTray,
+  WindowUse,
+} from './close-behavior';
 import { createTrayIcon } from './tray-icon';
 import { MAC_TRAFFIC_LIGHTS } from '../shared/utils/windowChrome';
 import { installWatchFolders } from './watch-folders';
@@ -8,7 +16,15 @@ import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { app, BrowserWindow, ipcMain, Menu, nativeImage, session, shell, Tray } from 'electron';
 import { electronApp, is, optimizer } from '@electron-toolkit/utils';
-import { BackendSupervisor, backendRoot } from './backend';
+import { BackendSupervisor, backendRoot, setBackendOnlyEnv } from './backend';
+import { DiagnosticReports } from './diagnostics';
+import {
+  DiagnosticStatusObserver,
+  installDiagnosticProcessCapture,
+  captureProcessGone,
+} from './diagnostics-capture';
+import { registerDiagnosticIpc } from './diagnostics-ipc';
+import { runDiagnosticOperation } from './diagnostic-operation';
 import { applySavedTorchVariant } from './torch-choice';
 import { assertTrustedMainFrame, registerIpc, wireWindowMaximizeEvents } from './ipc';
 import { APP_ORIGIN, installAppProtocol, registerAppScheme } from './protocol';
@@ -76,7 +92,13 @@ let mainWindow: BrowserWindow | null = null;
 let closeWatch: (() => void) | null = null;
 let supervisor: BackendSupervisor | null = null;
 let quitting = false;
+// Set when the OS ends the session (Windows log off or shutdown).
+let sessionEnding = false;
+// Settings → General → keep running in the system tray when the window is closed.
+let closeToTray = readCloseToTray(app.getPath('userData'));
 let tray: Tray | null = null;
+// Hidden-to-tray state and pending closes; see WindowUse.
+const windowUse = new WindowUse();
 let closeCapture: (() => void) | null = null;
 let closeDevProxy: (() => Promise<void>) | null = null;
 let closeUpdates: (() => void) | null = null;
@@ -84,6 +106,7 @@ let closeRepairAgents: (() => void) | null = null;
 let closeAccount: (() => void) | null = null;
 let closeDirectoryScopes: (() => void) | null = null;
 let quitPreparation: Promise<void> | null = null;
+let diagnostics: DiagnosticReports | null = null;
 // False for quits that must not install a downloaded update: a relaunch, or
 // the uninstall exit. Read when the updater is torn down.
 let installUpdateOnQuit = true;
@@ -140,7 +163,7 @@ function publishDiscovery(): void {
     pid: process.pid,
     version: __APP_VERSION__,
     headless: headlessOwner,
-    window: isLiveWindow(mainWindow),
+    window: windowUse.inUse(isLiveWindow(mainWindow)),
     remote: backend.connection.remote,
   };
   const serialized = JSON.stringify(record);
@@ -188,6 +211,7 @@ function terminalCommandOptions(): TerminalCommandOptions {
 }
 
 async function tearDownNativeResources(): Promise<void> {
+  const diagnosticTeardown = diagnostics?.close() ?? Promise.resolve();
   idleShutdown?.stop();
   idleShutdown = null;
   publishedDiscovery = '';
@@ -210,7 +234,11 @@ async function tearDownNativeResources(): Promise<void> {
   tray = null;
   const proxyTeardown = closeDevProxy?.() ?? Promise.resolve();
   closeDevProxy = null;
-  await Promise.allSettled([supervisor?.shutdown() ?? Promise.resolve(), proxyTeardown]);
+  await Promise.allSettled([
+    supervisor?.shutdown() ?? Promise.resolve(),
+    proxyTeardown,
+    diagnosticTeardown,
+  ]);
   closeDirectoryScopes?.();
   closeDirectoryScopes = null;
 }
@@ -250,6 +278,19 @@ ipcMain.handle('terminal:add-to-path', (event) => {
   return addTerminalCommandToPath(terminalCommandOptions());
 });
 
+ipcMain.handle('app:get-close-to-tray', (event) => {
+  assertTrustedMainFrame(event, mainWindow);
+  return closeToTray;
+});
+ipcMain.handle('app:set-close-to-tray', (event, enabled: unknown) => {
+  assertTrustedMainFrame(event, mainWindow);
+  if (typeof enabled !== 'boolean') throw new Error('Invalid close-to-tray setting');
+  // Throws when the write fails, so the renderer never sees an unsaved value confirmed.
+  saveCloseToTray(app.getPath('userData'), enabled);
+  closeToTray = enabled;
+  return closeToTray;
+});
+
 ipcMain.handle(
   'app:is-fullscreen',
   (event) => BrowserWindow.fromWebContents(event.sender)?.isFullScreen() ?? false,
@@ -284,24 +325,54 @@ function createWindow(): BrowserWindow {
   win.on('enter-full-screen', () => win.webContents.send('app:fullscreen', true));
   win.on('leave-full-screen', () => win.webContents.send('app:fullscreen', false));
   win.on('ready-to-show', () => activateLiveWindow(win));
+  win.on('show', () => {
+    // Any show (tray, dock, second launch, shortcut) wins over a close still flushing.
+    windowUse.show();
+    publishDiscovery();
+  });
+  win.on('session-end', () => {
+    // Windows is logging off or shutting down: never hide the window instead.
+    sessionEnding = true;
+  });
   win.on('close', (event) => {
-    if (quitting) return;
+    const action = decideWindowClose({
+      platform: process.platform,
+      headlessOwner,
+      quitting,
+      quitRequested: sessionEnding || quitPreparation !== null,
+      closeToTray,
+      trayAvailable: tray !== null,
+    });
+    if (action === 'allow') return;
     event.preventDefault();
-    // A terminal-started app returns to headless; its idle timer then decides.
-    if (process.platform === 'darwin' || headlessOwner) {
-      observeMainProcessTask(
-        flushRendererPersistence().finally(() => {
-          if (!win.isDestroyed()) win.destroy();
-        }),
-        mainErrors,
-        'Window persistence flush',
-      );
+    if (action === 'quit') {
+      observeMainProcessTask(beginOrderlyQuit(), mainErrors, 'Orderly quit');
       return;
     }
-    observeMainProcessTask(beginOrderlyQuit(), mainErrors, 'Orderly quit');
+    if (action === 'hide') {
+      // Hide first, flush after: the renderer stays alive while hidden, and a
+      // show that arrives mid-flush (tray click, second launch) is never undone.
+      win.hide();
+      windowUse.hide();
+      publishDiscovery();
+      observeMainProcessTask(flushRendererPersistence(), mainErrors, 'Window persistence flush');
+      return;
+    }
+    // Destroy is for a terminal-started app (or macOS), which returns to headless
+    // and lets its idle timer decide. A show during the flush cancels it.
+    const stillClosing = windowUse.beginClose();
+    observeMainProcessTask(
+      flushRendererPersistence().finally(() => {
+        if (win.isDestroyed() || !stillClosing()) return;
+        win.destroy();
+      }),
+      mainErrors,
+      'Window persistence flush',
+    );
   });
   win.on('closed', () => {
     if (mainWindow === win) mainWindow = null;
+    windowUse.show();
     if (headlessOwner) {
       if (process.platform === 'darwin') app.dock?.hide();
       idleShutdown?.touch();
@@ -351,6 +422,7 @@ function showWindow(navigateTo?: string): void {
   if (quitPreparation) return;
   if (!isLiveWindow(mainWindow)) mainWindow = createWindow();
   if (process.platform === 'darwin') void app.dock?.show();
+  windowUse.show();
   activateLiveWindow(mainWindow);
   idleShutdown?.touch();
   publishDiscovery();
@@ -369,9 +441,14 @@ function handleLaunch(intent: LaunchIntent): void {
     return;
   }
   if (intent.stop) {
-    // `voicestudio stop` never closes a window the user is working in.
-    if (!isLiveWindow(mainWindow))
-      observeMainProcessTask(beginOrderlyQuit(false), mainErrors, 'Terminal stop');
+    // `voicestudio stop` never closes a window the user is working in; one
+    // hidden to the tray is not in use, and still flushes its renderer first.
+    const stop = decideTerminalStop({
+      windowLive: isLiveWindow(mainWindow),
+      hiddenToTray: windowUse.hiddenToTray,
+    });
+    if (stop.quit)
+      observeMainProcessTask(beginOrderlyQuit(stop.flush), mainErrors, 'Terminal stop');
     return;
   }
   if (intent.checkUpdates) {
@@ -419,6 +496,47 @@ if (singleInstance && !app.requestSingleInstanceLock()) {
   app.exit(0);
 } else {
   if (devInstance) recordDevInstance(devInstance);
+  const reports = new DiagnosticReports({
+    directory: join(app.getPath('userData'), 'diagnostics'),
+    identity: {
+      app_version: __APP_VERSION__,
+      build_commit: __BUILD_COMMIT__,
+      platform:
+        ({ win32: 'windows', darwin: 'macos', linux: 'linux' } as Record<string, string>)[
+          process.platform
+        ] ?? 'unknown',
+      arch: process.arch === 'ia32' ? 'x86' : process.arch,
+    },
+  });
+  diagnostics = reports;
+  setBackendOnlyEnv({ OMNIVOICE_DIAGNOSTICS_DIR: reports.directory });
+  const diagnosticReady = reports.initialize();
+  installDiagnosticProcessCapture(reports);
+  registerDiagnosticIpc(
+    reports,
+    (event) => assertTrustedMainFrame(event, mainWindow),
+    diagnosticReady,
+  );
+  const diagnosticStatus = new DiagnosticStatusObserver(reports);
+  app.on('render-process-gone', (_event, contents, details) => {
+    if (!isLiveWindow(mainWindow) || contents !== mainWindow.webContents) return;
+    captureProcessGone(
+      reports,
+      true,
+      details.reason,
+      details.exitCode,
+      quitting || Boolean(quitPreparation),
+    );
+  });
+  app.on('child-process-gone', (_event, details) => {
+    captureProcessGone(
+      reports,
+      false,
+      details.reason,
+      details.exitCode,
+      quitting || Boolean(quitPreparation),
+    );
+  });
   let initialized: Promise<void> = Promise.resolve();
   app.on('second-instance', (_event, argv) => {
     const intent = parseLaunchIntent(argv);
@@ -454,6 +572,7 @@ if (singleInstance && !app.requestSingleInstanceLock()) {
       supervisor = backend;
       console.log(`[supervisor] backend root: ${backendRoot()} (packaged=${app.isPackaged})`);
       backend.subscribe((s) => {
+        diagnosticStatus.observe(s);
         const detail = s.message ? ` — ${s.message}` : '';
         console.log(`[supervisor] stage=${s.stage} managed=${s.managed} port=${s.port}${detail}`);
         publishDiscovery();
@@ -472,6 +591,7 @@ if (singleInstance && !app.requestSingleInstanceLock()) {
           await tearDownNativeResources();
           app.exit(0);
         },
+        (work) => runDiagnosticOperation(reports, work),
       );
       // Before backend.start(): the backend inherits the token-bridge env.
       closeAccount = await startAccount({
@@ -542,7 +662,11 @@ if (singleInstance && !app.requestSingleInstanceLock()) {
       tray.setToolTip(PRODUCT_NAME);
       closeCapture = installNativeCapture(PRELOAD_PATH, tray, () => mainWindow);
       tray.on('click', () => showWindow());
-      observeMainProcessTask(backend.start(), mainErrors, 'Backend startup');
+      observeMainProcessTask(
+        runDiagnosticOperation(reports, () => backend.start()),
+        mainErrors,
+        'Backend startup',
+      );
       if (headlessOwner) {
         idleShutdown = new IdleShutdown({
           idleMs: idleShutdownMs(),
@@ -558,7 +682,9 @@ if (singleInstance && !app.requestSingleInstanceLock()) {
       }
 
       app.on('activate', () => {
-        if (!isLiveWindow(mainWindow)) showWindow();
+        // A window hidden to the tray is live but not visible.
+        if (needsRestore({ live: isLiveWindow(mainWindow), visible: !!mainWindow?.isVisible() }))
+          showWindow();
       });
     })
     .catch((error) => {

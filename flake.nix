@@ -26,18 +26,41 @@
       # and stops git metadata from churning the hash.
       src = lib.cleanSourceWith {
         src = lib.cleanSource self;
-        # cleanSource already drops .git and result; node_modules and .venv are
-        # gitignored but `nix build path:.` would otherwise copy them.
+        # cleanSource already drops .git and Nix result symlinks, not regular
+        # result-* source modules. node_modules and .venv are gitignored but
+        # `nix build path:.` would otherwise copy them.
         filter =
           path: type:
           let
             name = baseNameOf (toString path);
           in
           name != "node_modules"
-          && name != ".venv"
-          && name != "result"
-          && !(lib.hasPrefix "result-" name);
+          && name != ".venv";
       };
+
+      # Compare real regular modules in the unfiltered tree with the exact
+      # source consumed by the app build. Skip dependencies before recursion
+      # and never follow symlinks, including Nix result links.
+      sourceModules =
+        let
+          collect = relative:
+            lib.concatLists (lib.mapAttrsToList (name: type:
+              let
+                child = if relative == "" then name else "${relative}/${name}";
+              in
+              if lib.elem name [ ".git" ".svn" "CVS" ".hg" ".jj" ".pijul" "_darcs" "node_modules" ".venv" ] then [ ]
+              else if type == "directory" then collect child
+              else lib.optional (
+                type == "regular"
+                && lib.any (extension: lib.hasSuffix extension name)
+                  [ ".js" ".jsx" ".mjs" ".cjs" ".ts" ".tsx" ".mts" ".cts" ]
+              ) child
+            ) (builtins.readDir "${self}/${relative}"));
+        in
+        collect "";
+      missingSourceModules = lib.filter (
+        relative: !(builtins.pathExists "${src}/${relative}")
+      ) sourceModules;
 
       # Only what `bun install` reads: the root manifest and lockfile, each
       # workspace's package.json, the patches named in patchedDependencies and
@@ -860,6 +883,7 @@
             install -Dm644 electron/T3CODE-LICENSE.txt "$resources/electron/T3CODE-LICENSE.txt"
             install -Dm644 config/app.json "$resources/config/app.json"
             install -Dm644 config/analytics.json "$resources/config/analytics.json"
+            install -Dm644 config/diagnostics.json "$resources/config/diagnostics.json"
             # stageRuntimeSources (runtime-project.ts SOURCES) copies these on
             # every platform and fails setup when one is missing.
             install -Dm644 scripts/windows-rocm-recipe.json "$resources/scripts/windows-rocm-recipe.json"
@@ -1058,6 +1082,15 @@
           nodeDepsDev = nodeDeps { inherit pkgs; };
         in
         {
+          # The assertion runs during `flake check --no-build`, before any
+          # expensive app build, using the actual cleanSourceWith output.
+          sourceModules =
+            assert lib.assertMsg (missingSourceModules == [ ])
+              "flake.nix: source filter removed JS/TS modules: ${lib.concatStringsSep ", " missingSourceModules}";
+            pkgs.runCommand "voicestudio-check-source-modules" { } ''
+              touch $out
+            '';
+
           # Every NEEDED entry must resolve inside the Nix store. A missing
           # libxdo surfaces here as "not found" rather than as a runtime
           # failure in the packaged app.
@@ -1109,6 +1142,7 @@
               electron/T3CODE-LICENSE.txt \
               config/app.json \
               config/analytics.json \
+              config/diagnostics.json \
               scripts/windows-rocm-recipe.json \
               scripts/smoke_windows_rocm.py \
               brand/icon.png \

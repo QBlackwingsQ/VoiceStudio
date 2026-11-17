@@ -1351,6 +1351,9 @@
     "terminal_command_added": "Dodano. Otwórz nowe okno terminala, aby używać voicestudio.",
     "terminal_command_failed": "Nie udało się dodać voicestudio do terminala. Sprawdź, czy folder domowy nie jest tylko do odczytu, i spróbuj ponownie.",
     "terminal_command_conflict": "{{path}} należy do innej instalacji, więc VoiceStudio go nie zmienił.",
+    "close_to_tray": "Działaj w zasobniku po zamknięciu okna",
+    "close_to_tray_desc": "Zamknięcie okna ukrywa VoiceStudio w zasobniku zamiast zamykać aplikację, więc trwające zadania są kontynuowane. Otwórz ją ponownie z ikony w zasobniku i wybierz tam Zakończ, aby wyjść. Na niektórych pulpitach Linux ikona wymaga obsługi AppIndicator; ponowne uruchomienie VoiceStudio również otwiera okno.",
+    "close_to_tray_failed": "Nie udało się zapisać tego ustawienia. Spróbuj ponownie.",
     "review_mode_on": "Recenzja",
     "review_mode_off": "Szybkostrzelny",
     "translate_agent": "Agent pasuje",
@@ -1745,6 +1748,8 @@
     "lineVoice": "Głos linii",
     "chapterHeading": "Tytuł rozdziału",
     "lineActions": "Akcje linii",
+    "mergeNext": "Połącz z następnym",
+    "mergeNextHint": "Połącz sąsiednie wiersze z tym samym mówcą, takim samym nadpisaniem głosu i ustawieniem szybkości.",
     "autocastDone_one": "Przydzielono {{lines}} linii do {{count}} głosu",
     "autocastDone_few": "Przydzielono {{lines}} linii do {{count}} głosów",
     "autocastDone_many": "Przydzielono {{lines}} linii do {{count}} głosów",
@@ -1890,7 +1895,12 @@
     "cast_note_many": "{{names}} nie mają jeszcze głosów, więc czyta je główny głos. Wybierz głosy w sekcji Obsada.",
     "line_gap": "Odstęp między wierszami",
     "paragraph_gap": "Odstęp między akapitami",
-    "trim_edges": "Usuń ciszę generowaną przez silnik"
+    "trim_edges": "Usuń ciszę generowaną przez silnik",
+    "result_other_connection": "Ten zapisany plik audio pochodzi z innego połączenia VoiceStudio. Wróć do tamtego połączenia, aby go odtworzyć.",
+    "result_connection_unknown": "Połącz się z lokalnym silnikiem lub zdalnym komputerem, aby wyświetlić zapisane pliki audio.",
+    "result_legacy": "Ten starszy zapisany wynik nie zawiera informacji o połączeniu. Poszukaj jego nazwy pliku w tym połączeniu; może to być inny plik.",
+    "result_check_audio": "Sprawdź zapisany plik audio w tym połączeniu",
+    "result_recovery_failed": "Zapisany plik audio nie jest dostępny w tym połączeniu. Wróć do pierwotnego połączenia lub wygeneruj go ponownie."
   },
   "credentials": {
     "microsoft_key": "Klucz tłumacza Microsoft",
@@ -3637,7 +3647,7 @@
       "notifications": "Powiadomienia",
       "notifications_help": "Powiadom, gdy dubbing się zakończy. Powiadomienia są tworzone na tym telefonie; nic nie przechodzi przez usługę w chmurze.",
       "privacy": "Prywatność",
-      "privacy_help": "Ta aplikacja komunikuje się tylko z sparowanym serwerem VoiceStudio. Bez kont, bez przetwarzania w chmurze.",
+      "privacy_help": "Zadania wykonywane na urządzeniu pozostają na tym telefonie. Pobieranie modeli, raporty wysyłane z Twojej woli i sparowany komputer korzystają z sieci. Automatyczne metadane diagnostyczne korzystają z sieci dopiero po osobnej zgodzie.",
       "about": "Informacje",
       "version": "Wersja {{version}}",
       "licenses": "Licencje open source"
@@ -3690,7 +3700,7 @@
       "dictation_setup": "Dyktowanie jest niedostępne. Na hoście zainstaluj i zaakceptuj model ASR. W przypadku dostępu zdalnego połącz się ponownie, używając klucza API lub zaufanej sieci; sam PIN udostępniania nie może autoryzować dyktowania.",
       "host_label": "Nazwa serwera",
       "theme_preview": "Podgląd wyglądu",
-      "analytics_local": "Ta aplikacja towarzysząca zapisuje Twój wybór na tym telefonie. Nie wysyła żadnych danych analitycznych.",
+      "analytics_local": "Ten telefon nie wysyła analityki użycia; Twój wybór jest zapisywany lokalnie. Automatyczne raporty diagnostyczne wymagają osobnej zgody.",
       "model_licenses": "Zobacz licencje modeli na hoście",
       "stage_upload": "Przesyłanie multimediów",
       "stage_prepare": "Przygotowywanie multimediów na hoście",
@@ -3743,7 +3753,7 @@
       "upload_pending": "Przesyłanie trwa w tle. Pozostaw uruchomiony VoiceStudio na komputerze.",
       "upload_resume": "Wznów monitorowanie",
       "upload_failed": "Przesyłanie nie powiodło się. Połącz się ponownie z tym samym hostem i wybierz multimedia jeszcze raz.",
-      "privacy_local": "Preferencja dotycząca analityki jest zapisana na tym urządzeniu. Ta wersja nigdy nie wysyła danych analitycznych.",
+      "privacy_local": "Ten telefon nie wysyła analityki użycia; Twój wybór jest zapisywany lokalnie. Automatyczne raporty diagnostyczne wymagają osobnej zgody.",
       "transcript": "Transkrypcja",
       "qr_unavailable": "Aparat jest niedostępny. Wpisz adres hosta ręcznie.",
       "language_system": "Język systemu",
@@ -3796,7 +3806,7 @@
       "capture_slow": "Telefon nie nadążył z przetwarzaniem dźwięku z mikrofonu. Zamknij inne aplikacje lub użyj komputera.",
       "preset_voice": "Głos {{number}}",
       "transfer": "{{received}} z {{total}}",
-      "privacy": "Zadania na urządzeniu zostają na tym telefonie. Z sieci korzystają tylko pobieranie modeli, zgłoszenia, które zdecydujesz się wysłać, oraz sparowany komputer.",
+      "privacy": "Zadania wykonywane na urządzeniu pozostają na tym telefonie. Pobieranie modeli, raporty wysyłane z Twojej woli i sparowany komputer korzystają z sieci. Automatyczne metadane diagnostyczne korzystają z sieci dopiero po osobnej zgodzie.",
       "computer_feature": "Ta funkcja działa obecnie na Twoim komputerze. Możesz używać funkcji „Mowa” i „Dyktowanie” na tym telefonie bez parowania.",
       "accepted": "Licencja zaakceptowana",
       "not_accepted": "Licencja niezaakceptowana",
@@ -3862,7 +3872,7 @@
       "downloads_many": "{{feature}} wymaga {{count}} pobrań · {{size}}"
     },
     "consent": {
-      "phone_note": "Zapisano na tym telefonie. Nic nie jest wysyłane."
+      "phone_note": "Twój wybór dotyczący analityki jest zapisywany na tym telefonie. Automatyczne raporty diagnostyczne wymagają osobnej zgody."
     },
     "report": {
       "action": "Zgłoś",
@@ -4349,5 +4359,14 @@
       "failed": "Niepowodzenie",
       "cancelled": "Anulowano"
     }
+  },
+  "diagnostics": {
+    "title": "Automatyczne raporty błędów",
+    "body": "Wysyłaj do Supermetry raporty techniczne o awariach oraz nieudanych instalacjach i generowaniu. Zawierają dane aplikacji i urządzenia, kody błędów, lokalizacje w kodzie oraz losowy identyfikator instalacji. Nigdy nie wysyłają Twojego dźwięku, tekstu, plików, nazw, danych logowania ani dzienników. Ta opcja jest niezależna od analityki użycia i domyślnie wyłączona. Możesz ją wyłączyć w dowolnej chwili w ustawieniach prywatności.",
+    "allow": "Zezwól na raporty błędów",
+    "keep_off": "Pozostaw raporty wyłączone",
+    "unavailable": "Automatyczne raporty są niedostępne lub wyłączone dla tej aplikacji.",
+    "managed": "Zarządzaj tym wyborem w aplikacji komputerowej połączonej z tą przeglądarką.",
+    "save_failed": "Nie udało się zapisać wyboru. Spróbuj ponownie."
   }
 }

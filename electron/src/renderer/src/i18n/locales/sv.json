@@ -1337,6 +1337,9 @@
     "terminal_command_added": "Tillagt. Öppna ett nytt terminalfönster för att använda voicestudio.",
     "terminal_command_failed": "Det gick inte att lägga till voicestudio i terminalen. Kontrollera att din hemmapp inte är skrivskyddad och försök igen.",
     "terminal_command_conflict": "{{path}} tillhör en annan installation, så VoiceStudio lämnade det oförändrat.",
+    "close_to_tray": "Fortsätt köra i systemfältet när fönstret stängs",
+    "close_to_tray_desc": "När du stänger fönstret döljs VoiceStudio i systemfältet i stället för att avslutas, så pågående jobb fortsätter. Öppna det igen från ikonen i systemfältet och välj Avsluta där för att stänga. På vissa Linux-skrivbord kräver ikonen AppIndicator-stöd; att starta VoiceStudio igen öppnar också fönstret.",
+    "close_to_tray_failed": "Det gick inte att spara inställningen. Försök igen.",
     "review_mode_on": "Granska",
     "review_mode_off": "Snabb eld",
     "translate_agent": "Agent passar",
@@ -1731,6 +1734,8 @@
     "lineVoice": "Radens röst",
     "chapterHeading": "Kapiteltitel",
     "lineActions": "Radåtgärder",
+    "mergeNext": "Slå samman med nästa",
+    "mergeNextHint": "Slå ihop intilliggande rader med samma talare, åsidosättning av röst och hastighetsinställning.",
     "autocastDone_one": "{{lines}} rader tilldelade {{count}} röst",
     "autocastDone_other": "{{lines}} rader fördelade på {{count}} röster",
     "recovery_title": "Avbruten berättelse",
@@ -1868,7 +1873,12 @@
     "cast_note_other": "{{names}} har inga röster än och läses med huvudrösten. Välj röster under Rollbesättning.",
     "line_gap": "Tystnad mellan rader",
     "paragraph_gap": "Tystnad mellan stycken",
-    "trim_edges": "Ta bort tystnad som motorn skapar"
+    "trim_edges": "Ta bort tystnad som motorn skapar",
+    "result_other_connection": "Det här sparade ljudet hör till en annan VoiceStudio-anslutning. Byt tillbaka till den anslutningen för att spela upp det.",
+    "result_connection_unknown": "Anslut till din lokala motor eller fjärrdator för att visa sparat ljud.",
+    "result_legacy": "Det här äldre sparade resultatet saknar anslutningsinformation. Leta efter filnamnet på den här anslutningen; det kan vara en annan fil.",
+    "result_check_audio": "Kontrollera sparat ljud på den här anslutningen",
+    "result_recovery_failed": "Det sparade ljudet är inte tillgängligt på den här anslutningen. Byt tillbaka till den ursprungliga anslutningen eller generera ljudet igen."
   },
   "credentials": {
     "microsoft_key": "Microsoft Translator-nyckel",
@@ -3611,7 +3621,7 @@
       "notifications": "Aviseringar",
       "notifications_help": "Avisera när en dubbning är klar. Aviseringar skapas på den här telefonen; ingenting går via en molntjänst.",
       "privacy": "Integritet",
-      "privacy_help": "Den här appen pratar bara med den VoiceStudio-server du har parkopplat. Inga konton, ingen bearbetning i molnet.",
+      "privacy_help": "Lokala uppgifter stannar på den här telefonen. Modellhämtningar, rapporter du väljer att skicka och din parkopplade dator använder nätverket. Automatiska diagnostiska metadata använder nätverket först efter ett separat samtycke.",
       "about": "Om",
       "version": "Version {{version}}",
       "licenses": "Licenser för öppen källkod"
@@ -3664,7 +3674,7 @@
       "dictation_setup": "Diktering är inte tillgänglig. Installera och acceptera en ASR-modell på värden. För fjärråtkomst, anslut igen med en API-nyckel eller ett betrott nätverk; enbart en delnings-PIN kan inte ge behörighet till diktering.",
       "host_label": "Servernamn",
       "theme_preview": "Förhandsvisning av utseende",
-      "analytics_local": "Den här följeslagarappen sparar ditt val på telefonen. Den skickar ingen analysdata.",
+      "analytics_local": "Ingen användningsanalys skickas från den här telefonen; ditt val sparas lokalt. Automatiska diagnostikrapporter kräver separat samtycke.",
       "model_licenses": "Granska modelllicenser på värden",
       "stage_upload": "Laddar upp media",
       "stage_prepare": "Förbereder media på värden",
@@ -3717,7 +3727,7 @@
       "upload_pending": "Uppladdningen fortsätter i bakgrunden. Låt VoiceStudio på datorn vara igång.",
       "upload_resume": "Återuppta bevakning",
       "upload_failed": "Uppladdningen misslyckades. Anslut till samma värd igen och välj mediet på nytt.",
-      "privacy_local": "Inställningen för analys sparas på den här enheten. Den här versionen skickar aldrig analysdata.",
+      "privacy_local": "Ingen användningsanalys skickas från den här telefonen; ditt val sparas lokalt. Automatiska diagnostikrapporter kräver separat samtycke.",
       "transcript": "Transkription",
       "qr_unavailable": "Kameran är inte tillgänglig. Ange värdens adress manuellt.",
       "language_system": "Systemspråk",
@@ -3770,7 +3780,7 @@
       "capture_slow": "Telefonen hann inte bearbeta mikrofonljudet. Stäng andra appar eller använd din dator.",
       "preset_voice": "Röst {{number}}",
       "transfer": "{{received}} av {{total}}",
-      "privacy": "Uppgifter på enheten stannar på telefonen. Bara modellnedladdningar, rapporter som du väljer att skicka och din parkopplade dator använder nätverket.",
+      "privacy": "Lokala uppgifter stannar på den här telefonen. Modellhämtningar, rapporter du väljer att skicka och din parkopplade dator använder nätverket. Automatiska diagnostiska metadata använder nätverket först efter ett separat samtycke.",
       "computer_feature": "Den här funktionen körs just nu på din dator. Du kan använda Tal och Diktering på telefonen utan parkoppling.",
       "accepted": "Licens godkänd",
       "not_accepted": "Licens inte godkänd",
@@ -3834,7 +3844,7 @@
       "download_one": "{{name}} · nedladdning {{size}}"
     },
     "consent": {
-      "phone_note": "Sparas på telefonen. Ingenting skickas."
+      "phone_note": "Ditt analysval sparas på den här telefonen. Automatiska diagnostikrapporter kräver separat samtycke."
     },
     "report": {
       "action": "Rapportera",
@@ -4317,5 +4327,14 @@
       "failed": "Misslyckades",
       "cancelled": "Avbruten"
     }
+  },
+  "diagnostics": {
+    "title": "Automatiska felrapporter",
+    "body": "Skicka tekniska rapporter om krascher och misslyckade installationer eller genereringar till Supermetry, med app- och enhetsuppgifter, felkoder, platser i appkoden och ett slumpmässigt installations-ID. Ljud, text, filer, namn, inloggningsuppgifter och loggar skickas aldrig. Detta är skilt från användningsanalys och är avstängt som standard. Du kan stänga av det när som helst under Sekretess.",
+    "allow": "Tillåt felrapporter",
+    "keep_off": "Behåll rapporter avstängda",
+    "unavailable": "Automatiska rapporter är inte tillgängliga eller är avstängda för den här appen.",
+    "managed": "Hantera det här valet i datorappen som är ansluten till den här webbläsaren.",
+    "save_failed": "Det gick inte att spara valet. Försök igen."
   }
 }

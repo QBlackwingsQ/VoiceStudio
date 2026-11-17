@@ -125,6 +125,10 @@ jobs:
         run: bun run check:electron
       - name: Package without publishing
         working-directory: electron
+        env:
+          SUPERMETRY_APP_ID: ${{ secrets.SUPERMETRY_APP_ID }}
+          SUPERMETRY_INGEST_KEY: ${{ secrets.SUPERMETRY_INGEST_KEY }}
+          SUPERMETRY_APP_HOST: ${{ vars.SUPERMETRY_APP_HOST || secrets.SUPERMETRY_APP_HOST }}
         run: |
           bun x electron-builder --config electron-builder.config.mjs ${{ matrix.flags }} --publish never
           if [ "$RUNNER_OS" = Linux ]; then
@@ -156,7 +160,7 @@ jobs:
             node tests/packaged-smoke.mjs --install
           fi
       - name: Save installers and updater metadata for review
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: electron-rehearsal-${{ matrix.platform }}-${{ matrix.arch }}
           retention-days: 14

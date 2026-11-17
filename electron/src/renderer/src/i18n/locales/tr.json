@@ -1337,6 +1337,9 @@
     "terminal_command_added": "Eklendi. voicestudio kullanmak için yeni bir terminal penceresi açın.",
     "terminal_command_failed": "voicestudio terminale eklenemedi. Ana klasörünüzün salt okunur olmadığını kontrol edip yeniden deneyin.",
     "terminal_command_conflict": "{{path}} başka bir kuruluma ait, bu yüzden VoiceStudio onu değiştirmedi.",
+    "close_to_tray": "Kapatınca tepside çalışmaya devam et",
+    "close_to_tray_desc": "Pencereyi kapatmak VoiceStudio’yu çıkmak yerine tepsiye gizler, böylece süren işler devam eder. Tepsi simgesinden yeniden açın ve kapatmak için orada Çık’ı seçin. Bazı Linux masaüstlerinde tepsi simgesi AppIndicator desteği gerektirir; VoiceStudio’yu yeniden açmak da pencereyi geri getirir.",
+    "close_to_tray_failed": "Bu ayar kaydedilemedi. Lütfen tekrar deneyin.",
     "review_mode_on": "İncele",
     "review_mode_off": "Hızlı ateş",
     "translate_agent": "Ajanla uyarlama",
@@ -1731,6 +1734,8 @@
     "lineVoice": "Satır sesi",
     "chapterHeading": "Bölüm başlığı",
     "lineActions": "Satır işlemleri",
+    "mergeNext": "Sonrakiyle birleştir",
+    "mergeNextHint": "Aynı konuşmacı, ses geçersiz kılma ve hız ayarına sahip bitişik satırları birleştirin.",
     "autocastDone_one": "{{lines}} satır {{count}} sese dağıtıldı",
     "autocastDone_other": "{{lines}} satır {{count}} sese dağıtıldı",
     "recovery_title": "Yarıda kalan hikâye",
@@ -1868,7 +1873,12 @@
     "cast_note_other": "{{names}} için henüz ses seçilmedi, ana sesle okunurlar. Oyuncular bölümünden ses seçin.",
     "line_gap": "Satırların arasındaki duraklama",
     "paragraph_gap": "Paragrafların arasındaki duraklama",
-    "trim_edges": "Motorun sessiz kısımlarını kes"
+    "trim_edges": "Motorun sessiz kısımlarını kes",
+    "result_other_connection": "Bu kayıtlı ses başka bir VoiceStudio bağlantısına aittir. Oynatmak için o bağlantıya geri dönün.",
+    "result_connection_unknown": "Kayıtlı sesi göstermek için yerel motorunuza veya uzak bilgisayarınıza bağlanın.",
+    "result_legacy": "Bu eski kayıtlı sonuçta bağlantı bilgisi yok. Bu bağlantıda dosya adını arayın; farklı bir dosya olabilir.",
+    "result_check_audio": "Bu bağlantıda kayıtlı sesi kontrol et",
+    "result_recovery_failed": "Kayıtlı ses bu bağlantıda kullanılamıyor. Özgün bağlantısına geri dönün veya sesi yeniden oluşturun."
   },
   "credentials": {
     "microsoft_key": "Microsoft Çevirmen Anahtarı",
@@ -3611,7 +3621,7 @@
       "notifications": "Bildirimler",
       "notifications_help": "Bir dublaj bittiğinde bildir. Bildirimler bu telefonda oluşturulur; hiçbir şey bulut hizmetinden geçmez.",
       "privacy": "Gizlilik",
-      "privacy_help": "Bu uygulama yalnızca eşleştirdiğiniz VoiceStudio sunucusuyla konuşur. Hesap yok, bulut işleme yok.",
+      "privacy_help": "Cihaz üzerinde yapılan işlemler bu telefonda kalır. Model indirmeleri, göndermeyi seçtiğiniz raporlar ve eşleştirilmiş bilgisayarınız ağı kullanır. Otomatik tanılama meta verileri, yalnızca ayrı bir onaydan sonra ağı kullanır.",
       "about": "Hakkında",
       "version": "Sürüm {{version}}",
       "licenses": "Açık kaynak lisansları"
@@ -3664,7 +3674,7 @@
       "dictation_setup": "Dikte kullanılamıyor. Ana makinede bir ASR modeli kurup kabul edin. Uzaktan erişim için API anahtarı veya güvenilir bir ağ ile yeniden bağlanın; yalnızca paylaşım PIN'i dikteyi yetkilendiremez.",
       "host_label": "Sunucu etiketi",
       "theme_preview": "Görünüm önizlemesi",
-      "analytics_local": "Bu yardımcı uygulama seçiminizi bu telefonda kaydeder. Hiçbir analiz verisi göndermez.",
+      "analytics_local": "Bu telefondan kullanım analizi gönderilmez; seçiminiz yerel olarak saklanır. Otomatik tanılama raporları için ayrı onay gerekir.",
       "model_licenses": "Model lisanslarını ana makinenizde inceleyin",
       "stage_upload": "Medya yükleniyor",
       "stage_prepare": "Medya ana makinede hazırlanıyor",
@@ -3717,7 +3727,7 @@
       "upload_pending": "Yükleme arka planda devam ediyor. Bilgisayarınızdaki VoiceStudio'yu çalışır durumda tutun.",
       "upload_resume": "İzlemeyi sürdür",
       "upload_failed": "Yükleme başarısız. Aynı ana makineye yeniden bağlanıp medyayı tekrar seçin.",
-      "privacy_local": "Analiz tercihi bu cihazda saklanır. Bu sürüm hiçbir zaman analiz verisi göndermez.",
+      "privacy_local": "Bu telefondan kullanım analizi gönderilmez; seçiminiz yerel olarak saklanır. Otomatik tanılama raporları için ayrı onay gerekir.",
       "transcript": "Transkript",
       "qr_unavailable": "Kamera kullanılamıyor. Ana makine adresini elle girin.",
       "language_system": "Sistem dili",
@@ -3770,7 +3780,7 @@
       "capture_slow": "Bu telefon mikrofon sesini yeterince hızlı işleyemedi. Diğer uygulamaları kapatın veya bilgisayarınızı kullanın.",
       "preset_voice": "Ses {{number}}",
       "transfer": "{{received}} / toplam {{total}}",
-      "privacy": "Cihaz içi görevler bu telefonda kalır. Yalnızca model indirmeleri, göndermeyi seçtiğiniz bildirimler ve eşleştirilmiş bilgisayarınız ağı kullanır.",
+      "privacy": "Cihaz üzerinde yapılan işlemler bu telefonda kalır. Model indirmeleri, göndermeyi seçtiğiniz raporlar ve eşleştirilmiş bilgisayarınız ağı kullanır. Otomatik tanılama meta verileri, yalnızca ayrı bir onaydan sonra ağı kullanır.",
       "computer_feature": "Bu özellik şu anda bilgisayarınızda çalışır. Konuşma ve Dikte'yi eşleştirmeden bu telefonda kullanabilirsiniz.",
       "accepted": "Lisans kabul edildi",
       "not_accepted": "Lisans kabul edilmedi",
@@ -3834,7 +3844,7 @@
       "download_one": "{{name}} · {{size}} indirme"
     },
     "consent": {
-      "phone_note": "Bu telefonda saklanır. Hiçbir şey gönderilmez."
+      "phone_note": "Analiz tercihiniz bu telefonda kaydedilir. Otomatik tanılama raporları için ayrı onay gerekir."
     },
     "report": {
       "action": "Bildir",
@@ -4317,5 +4327,14 @@
       "failed": "Başarısız",
       "cancelled": "İptal edildi"
     }
+  },
+  "diagnostics": {
+    "title": "Otomatik hata raporları",
+    "body": "Çökmeler, başarısız kurulumlar ve üretim hataları hakkında Supermetry’ye teknik raporlar gönderin. Raporlar uygulama ve cihaz bilgilerini, hata kodlarını, uygulama kodu konumlarını ve rastgele bir kurulum kimliğini içerir. Sesiniz, metniniz, dosyalarınız, adlarınız, kimlik bilgileriniz veya günlükleriniz asla gönderilmez. Kullanım analizinden bağımsızdır ve varsayılan olarak kapalıdır. Gizlilik bölümünden istediğiniz zaman kapatabilirsiniz.",
+    "allow": "Hata raporlarına izin ver",
+    "keep_off": "Raporları kapalı tut",
+    "unavailable": "Otomatik raporlar bu uygulama için kullanılamıyor veya devre dışı.",
+    "managed": "Bu seçimi tarayıcıya bağlı masaüstü uygulamasından yönetin.",
+    "save_failed": "Bu seçim kaydedilemedi. Lütfen tekrar deneyin."
   }
 }

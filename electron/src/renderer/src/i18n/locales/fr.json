@@ -1339,6 +1339,9 @@
     "terminal_command_added": "Ajouté. Ouvrez une nouvelle fenêtre de terminal pour utiliser voicestudio.",
     "terminal_command_failed": "Impossible d'ajouter voicestudio au terminal. Vérifiez que votre dossier personnel n'est pas en lecture seule, puis réessayez.",
     "terminal_command_conflict": "{{path}} appartient à une autre installation : VoiceStudio ne l'a pas modifié.",
+    "close_to_tray": "Continuer en arrière-plan dans la zone de notification",
+    "close_to_tray_desc": "Fermer la fenêtre masque VoiceStudio dans la zone de notification au lieu de quitter, et les tâches en cours se poursuivent. Rouvrez-le depuis l’icône de la zone de notification et choisissez Quitter pour fermer. Sur certains bureaux Linux, l’icône nécessite la prise en charge d’AppIndicator ; relancer VoiceStudio rouvre aussi la fenêtre.",
+    "close_to_tray_failed": "Impossible d'enregistrer ce réglage. Réessayez.",
     "review_mode_on": "Examen",
     "review_mode_off": "Tir rapide",
     "translate_agent": "Ajustement des agents",
@@ -1733,6 +1736,8 @@
     "lineVoice": "Voix de la ligne",
     "chapterHeading": "Titre du chapitre",
     "lineActions": "Actions de la ligne",
+    "mergeNext": "Fusionner avec le suivant",
+    "mergeNextHint": "Fusionnez les lignes adjacentes ayant le même locuteur, la même voix personnalisée et le même réglage de vitesse.",
     "autocastDone_one": "{{lines}} lignes distribuées à {{count}} voix",
     "autocastDone_other": "{{lines}} lignes distribuées entre {{count}} voix",
     "recovery_title": "Histoire interrompue",
@@ -1870,7 +1875,12 @@
     "cast_note_one": "{{names}} n’a pas encore de voix et sera lu avec la voix principale. Choisissez-en une dans Distribution.",
     "cast_note_other": "{{names}} n’ont pas encore de voix et seront lus avec la voix principale. Choisissez-en dans Distribution.",
     "line_gap": "Silence entre chaque ligne",
-    "paragraph_gap": "Silence entre chaque paragraphe"
+    "paragraph_gap": "Silence entre chaque paragraphe",
+    "result_other_connection": "Cet audio enregistré appartient à une autre connexion VoiceStudio. Revenez à cette connexion pour le lire.",
+    "result_connection_unknown": "Connectez votre moteur local ou votre ordinateur distant pour afficher les audios enregistrés.",
+    "result_legacy": "Cet ancien résultat enregistré ne contient aucune information de connexion. Recherchez son nom de fichier sur cette connexion ; il peut s’agir d’un autre fichier.",
+    "result_check_audio": "Vérifier l’audio enregistré sur cette connexion",
+    "result_recovery_failed": "L’audio enregistré n’est pas disponible sur cette connexion. Revenez à sa connexion d’origine ou générez-le à nouveau."
   },
   "credentials": {
     "microsoft_key": "Clé du traducteur Microsoft",
@@ -3613,7 +3623,7 @@
       "notifications": "Notifications",
       "notifications_help": "Notifier lorsqu'un doublage est terminé. Les notifications sont créées sur ce téléphone ; rien ne passe par un service cloud.",
       "privacy": "Confidentialité",
-      "privacy_help": "Cette application ne communique qu'avec le serveur VoiceStudio que vous avez associé. Aucun compte, aucun traitement dans le cloud.",
+      "privacy_help": "Les tâches locales restent sur ce téléphone. Les téléchargements de modèles, les rapports que vous choisissez d’envoyer et votre ordinateur associé utilisent le réseau. Les métadonnées de diagnostic automatique ne sont envoyées qu’après un consentement distinct.",
       "about": "À propos",
       "version": "Version {{version}}",
       "licenses": "Licences open source"
@@ -3666,7 +3676,7 @@
       "dictation_setup": "La dictée n'est pas disponible. Sur l'hôte, installez et acceptez un modèle ASR. Pour un accès distant, reconnectez-vous avec une clé API ou via un réseau de confiance ; un PIN de partage seul ne peut pas autoriser la dictée.",
       "host_label": "Nom du serveur",
       "theme_preview": "Aperçu de l'apparence",
-      "analytics_local": "Cette application compagnon enregistre votre choix sur ce téléphone. Elle n'envoie aucune donnée d'analyse.",
+      "analytics_local": "Aucune statistique d’utilisation n’est envoyée depuis ce téléphone ; votre choix est enregistré localement. Les rapports de diagnostic automatique nécessitent un consentement distinct.",
       "model_licenses": "Consulter les licences des modèles sur votre hôte",
       "stage_upload": "Téléversement du média",
       "stage_prepare": "Préparation du média sur l'hôte",
@@ -3719,7 +3729,7 @@
       "upload_pending": "Le téléversement se poursuit en arrière-plan. Gardez VoiceStudio en marche sur votre ordinateur.",
       "upload_resume": "Reprendre le suivi",
       "upload_failed": "Échec du téléversement. Reconnectez-vous au même hôte et sélectionnez à nouveau le média.",
-      "privacy_local": "La préférence d'analyse est enregistrée sur cet appareil. Cette version n'envoie jamais de données d'analyse.",
+      "privacy_local": "Aucune statistique d’utilisation n’est envoyée depuis ce téléphone ; votre choix est enregistré localement. Les rapports de diagnostic automatique nécessitent un consentement distinct.",
       "transcript": "Transcription",
       "qr_unavailable": "La caméra n'est pas disponible. Saisissez l'adresse de l'hôte manuellement.",
       "language_system": "Langue du système",
@@ -3772,7 +3782,7 @@
       "capture_slow": "Ce téléphone n'a pas pu traiter l'audio du micro assez vite. Fermez d'autres applications ou utilisez votre ordinateur.",
       "preset_voice": "Voix {{number}}",
       "transfer": "{{received}} sur {{total}}",
-      "privacy": "Les tâches sur l'appareil restent sur ce téléphone. Seuls les téléchargements de modèles, les signalements que vous choisissez d'envoyer et votre ordinateur associé utilisent le réseau.",
+      "privacy": "Les tâches locales restent sur ce téléphone. Les téléchargements de modèles, les rapports que vous choisissez d’envoyer et votre ordinateur associé utilisent le réseau. Les métadonnées de diagnostic automatique ne sont envoyées qu’après un consentement distinct.",
       "computer_feature": "Cette fonction s'exécute actuellement sur votre ordinateur. Parole et Dictée fonctionnent sur ce téléphone sans association.",
       "accepted": "Licence acceptée",
       "not_accepted": "Licence non acceptée",
@@ -3836,7 +3846,7 @@
       "download_one": "{{name}} · {{size}} à télécharger"
     },
     "consent": {
-      "phone_note": "Enregistré sur ce téléphone. Rien n'est envoyé."
+      "phone_note": "Votre choix concernant les statistiques est enregistré sur ce téléphone. Les rapports de diagnostic automatique nécessitent un consentement distinct."
     },
     "report": {
       "action": "Signaler",
@@ -4319,5 +4329,14 @@
       "failed": "Échec",
       "cancelled": "Annulé"
     }
+  },
+  "diagnostics": {
+    "title": "Rapports d’erreurs automatiques",
+    "body": "Envoyez à Supermetry des rapports techniques sur les plantages et les échecs d’installation ou de génération, avec des informations sur l’application et l’appareil, des codes d’erreur, des emplacements du code et un identifiant d’installation aléatoire. Aucun audio, texte, fichier, nom, identifiant de connexion ni journal n’est envoyé. Cette option est indépendante des statistiques d’utilisation et désactivée par défaut. Désactivez-la à tout moment dans Confidentialité.",
+    "allow": "Autoriser les rapports d’erreurs",
+    "keep_off": "Laisser les rapports désactivés",
+    "unavailable": "Les rapports automatiques sont indisponibles ou désactivés pour cette application.",
+    "managed": "Gérez ce choix dans l’application de bureau connectée à ce navigateur.",
+    "save_failed": "Impossible d’enregistrer ce choix. Veuillez réessayer."
   }
 }

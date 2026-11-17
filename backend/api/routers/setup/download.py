@@ -29,6 +29,7 @@ from services.hf_auth import token_for_endpoint
 from services.hf_revisions import revision_for
 from services.segmented_download import DownloadIntegrityError
 from core.url_safety import UnsafeURLError
+from core.scrub import scrub_text
 from utils import hf_progress
 from utils import download_aggregator
 # Weight floors and package files live in ``services/model_catalogue.py`` (via
@@ -793,6 +794,8 @@ async def install_model(req: InstallModelRequest):
                     # A disk-full is not a transient network failure — don't set
                     # a cooldown (freeing space, not waiting, is the fix). The
                     # outer finally still cleans up the aggregator + context.
+                    from core import diagnostic_reports
+                    diagnostic_reports.capture_failure("download", error_code="DISK_FULL")
                     return
                 download_aggregator.start(
                     req.repo_id,
@@ -1005,6 +1008,8 @@ async def install_model(req: InstallModelRequest):
                 "phase": "install_cancelled",
             })
         except Exception as e:
+            from core import diagnostic_reports
+            diagnostic_reports.capture_failure("download", error=e)
             _resolving.set()
             logger.info("model install failed for %s: %s", req.repo_id, e)
             import time as _time_fail
@@ -1092,7 +1097,10 @@ async def install_model(req: InstallModelRequest):
         _cancelled.discard(req.repo_id)
         _install_failures.pop(req.repo_id, None)
         try:
-            task = loop.create_task(asyncio.to_thread(_do))
+            from core import diagnostic_reports
+            # Bind before scheduling: a delayed worker must not borrow a
+            # replacement grant when its already-owned install fails.
+            task = loop.create_task(asyncio.to_thread(diagnostic_reports.bind_callable(_do)))
             _install_tasks.add(task)
             _install_tasks_by_repo[req.repo_id] = task
         except Exception:
@@ -1227,7 +1235,7 @@ def delete_model(repo_id: str):
         raise HTTPException(
             status_code=500,
             detail=(
-                f"Could not delete {repo_id}: {e}. "
+                f"Could not delete {repo_id}: {scrub_text(str(e))}. "
                 "Close any process using the model (e.g. the app's main dub job) and retry."
             ),
         )

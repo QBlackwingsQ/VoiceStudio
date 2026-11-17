@@ -41,7 +41,7 @@ from services.ffmpeg_utils import (
 from services.rvc import apply_rvc, is_enabled as rvc_is_enabled
 from services.incremental import segment_fingerprint, fit_fingerprint
 from services.fit_planner import FitParams, plan_fit
-from services.watermark import mark_synthetic, will_mark
+from services.watermark import mark_synthetic, mark_synthetic_async, will_mark
 from services import dub_pipeline, dub_resume
 from services.speaker_clone import auto_profile_id
 from api.routers.dub_core import _get_job, _safe_lang_or_400, _save_job
@@ -1727,8 +1727,9 @@ async def dub_generate(job_id: str, req: DubRequest):
                 # silence has nothing to mark, so nothing else marks again.
                 # Recovered audio was marked when it was first rendered.
                 if _recovered_wav is None:
-                    audio_tensor = mark_synthetic(audio_tensor, backend.sample_rate,
-                                                  context="dub_generate.segment")
+                    audio_tensor = await mark_synthetic_async(
+                        audio_tensor, backend.sample_rate, context="dub_generate.segment"
+                    )
 
                 if journal is not None and _used_recovery:
                     _, _validated_model_fp, _ = await _run_journal_io(_model_folder_fingerprint)
@@ -1784,9 +1785,23 @@ async def dub_generate(job_id: str, req: DubRequest):
                 # classes using VoiceStudio-owned constants only.
                 from core.public_errors import stream_generation_failure
 
+                from core import diagnostic_reports
+                from core.failure import licence_required_detail
+                licence = licence_required_detail(e)
+                reported = False
+                if licence is None and not task_manager.is_cancelled(task_id):
+                    reported = diagnostic_reports.capture_failure("dub", error=e)
                 error_detail = stream_generation_failure(e)["detail"]
                 logger.exception("Dub generation failed for segment %s", seg_id)
-                yield f"data: {json.dumps({'type': 'error', 'segment': i, 'segment_id': seg_id, 'error': error_detail})}\n\n"
+                error_frame = {'type': 'error', 'segment': i, 'segment_id': seg_id, 'error': error_detail}
+                if licence is not None:
+                    # Keep the expected refusal distinguishable after its
+                    # exception has become a persisted task-stream frame.
+                    error_frame['error_code'] = licence['code']
+                yield diagnostic_reports.preserve_failure_identity(
+                    f"data: {json.dumps(error_frame)}\n\n",
+                    e, reported=reported,
+                )
                 return
 
         _t_loop_end = time.perf_counter()
