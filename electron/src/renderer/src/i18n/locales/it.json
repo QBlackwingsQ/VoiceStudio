@@ -947,7 +947,8 @@
     "retry": "Riprova",
     "confirm": "Conferma",
     "details": "Dettagli",
-    "unknown": "sconosciuto"
+    "unknown": "sconosciuto",
+    "link_blocked": "Impossibile aprire questo link. Sono consentiti solo link web e e-mail."
   },
   "dubWorkspace": {
     "transcriptIssues": "Problemi della trascrizione",
@@ -1369,6 +1370,7 @@
     "gpu_report_state_nvidia_rocm_build": "È stata trovata {{gpu}}, ma questo PyTorch è una build AMD ROCm e non può pilotare le GPU NVIDIA.",
     "gpu_report_state_intel_unsupported": "È stata trovata {{gpu}}, ma nessun motore installato può usare le GPU Intel, quindi tutto viene eseguito sulla CPU.",
     "gpu_report_state_kernels_missing": "È stata trovata {{gpu}}, ma questa build di PyTorch ({{torch}}) non ha kernel per la sua architettura di calcolo, quindi i motori vengono eseguiti sulla CPU.",
+    "gpu_report_torch_fallback": "La configurazione ha provato la build PyTorch CUDA 12.6 per questa GPU, ma non è riuscita a usare la scheda, quindi i motori PyTorch restano sulla CPU. Motivo: {{reason}}",
     "gpu_report_state_kernels_missing_legacy": "{{gpu}} è una GPU NVIDIA datata (serie GTX 900 / 1000 o precedente). Questa build di PyTorch ({{torch}}) non supporta più quella generazione, quindi i motori PyTorch girano sulla CPU. I motori con un proprio runtime Vulkan possono ancora usare la GPU.",
     "gpu_report_state_unknown": "Impossibile determinare lo stato della GPU.",
     "gpu_report_option_vulkan_engines": "Usa un motore con un proprio runtime GPU: audio.cpp funziona sulle GPU AMD Radeon tramite Vulkan (Impostazioni → Modelli → installa il runtime).",
@@ -2031,6 +2033,7 @@
     "setup_wrong_architecture": "Chiudi VoiceStudio, sostituiscilo con il DMG Apple Silicon (arm64), quindi riaprilo. Al momento è in uso l’edizione Intel tramite Rosetta; il cambio abilita l’IA locale senza cancellare voci o progetti.",
     "setup_missing_system_library": "Questo sistema Windows non ha il Microsoft Visual C++ 2015-2022 Redistributable (x64), necessario all’estensione audio di PyTorch. Installalo da Microsoft, poi premi Riprova.",
     "setup_outdated_system_library": "Il Microsoft Visual C++ Redistributable (x64) di questo sistema Windows è troppo vecchio, quindi una libreria vocale si arresta al caricamento. Installa la versione più recente da Microsoft, poi premi Riprova.",
+    "setup_torch_dll_init_failed": "Impossibile caricare PyTorch e la causa non è stata stabilita. Installa l'ultimo Microsoft Visual C++ Redistributable (x64), poi aggiorna il driver della scheda video e premi Riprova. Se continua a fallire, usa «Pulisci e riprova» in «Altre soluzioni».",
     "setup_files_locked": "Un altro programma sta usando i file di VoiceStudio (OneDrive o un’altra app di sincronizzazione, l’antivirus o un backend VoiceStudio ancora in esecuzione). Chiudilo o metti in pausa la sincronizzazione, poi premi Riprova.",
     "download_apple_silicon": "Scarica la versione Apple Silicon",
     "retry": "Riprova",
@@ -2884,6 +2887,7 @@
     "source_language_required": "Il riconoscimento vocale non ha indicato in quale lingua è parlato questo video, quindi non può essere tradotto qui. Apri il video in Doppiaggio e scegli la lingua di origine, oppure seleziona un modello di riconoscimento vocale che rileva la lingua.",
     "transcription_media_tool": "La trascrizione richiede ffmpeg, che VoiceStudio non ha trovato o non è riuscito a eseguire. Apri Impostazioni → Strumenti audio e usa Scarica/Ripara, oppure installa ffmpeg (macOS: brew install ffmpeg; Windows: winget install Gyan.FFmpeg; Linux: il tuo gestore di pacchetti) e riavvia VoiceStudio. Puoi anche puntare FFMPEG_PATH a un binario ffmpeg.",
     "transcription_pipe_lost": "Il backend ha perso il canale di output verso l'app durante la trascrizione (broken pipe). Riavvia VoiceStudio e riprova.",
+    "reference_transcript_required": "La clip di riferimento di questa voce non ha una trascrizione, di cui questo motore ha bisogno per clonarla. Aggiungi la trascrizione al profilo vocale oppure installa un modello di riconoscimento vocale per trascriverla automaticamente.",
     "gpu_oom": "La GPU ha esaurito la memoria. Chiudi le altre app che usano molto la GPU o scarica i modelli, poi riprova. Puoi anche scegliere la CPU in Impostazioni → Prestazioni e dispositivo o selezionare un motore TTS più piccolo.",
     "host_memory_exhausted": "Il computer ha esaurito la memoria. Chiudi le altre app e le schede del browser che usano molta memoria, scarica i modelli inutilizzati, genera un brano più breve o scegli un motore TTS più leggero.",
     "disk_full": "Il disco è pieno. Libera spazio sull'unità che contiene i dati, la cache dei modelli o la cartella temporanea di VoiceStudio, poi riprova. Impostazioni → Archiviazione mostra l'uso del disco e può cancellare i file temporanei.",
@@ -2955,6 +2959,8 @@
     "free": "Gratis",
     "pro": "Pro",
     "get_pro": "Ottieni Pro",
+    "upgrade_pro": "Passa a Pro",
+    "get_pro_app": "Scarica l'app Pro",
     "sponsor_bar": "Barra sponsor",
     "visible": "Visibile",
     "hideable": "Può essere nascosta",

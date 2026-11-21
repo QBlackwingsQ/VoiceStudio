@@ -293,7 +293,11 @@ ipcMain.handle('app:set-close-to-tray', (event, enabled: unknown) => {
 
 ipcMain.handle(
   'app:is-fullscreen',
-  (event) => BrowserWindow.fromWebContents(event.sender)?.isFullScreen() ?? false,
+  (event) => {
+    const owner = BrowserWindow.fromWebContents(event.sender);
+    assertTrustedMainFrame(event, owner);
+    return owner?.isFullScreen() ?? false;
+  },
 );
 
 function createWindow(): BrowserWindow {
@@ -535,6 +539,7 @@ if (singleInstance && !app.requestSingleInstanceLock()) {
       details.reason,
       details.exitCode,
       quitting || Boolean(quitPreparation),
+      details.type,
     );
   });
   let initialized: Promise<void> = Promise.resolve();

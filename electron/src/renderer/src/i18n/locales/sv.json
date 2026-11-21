@@ -945,7 +945,8 @@
     "retry": "Försök igen",
     "confirm": "Bekräfta",
     "details": "Detaljer",
-    "unknown": "okänd"
+    "unknown": "okänd",
+    "link_blocked": "Länken kan inte öppnas. Endast webb- och e-postlänkar är tillåtna."
   },
   "dubWorkspace": {
     "transcriptIssues": "Problem i transkriptionen",
@@ -1367,6 +1368,7 @@
     "gpu_report_state_nvidia_rocm_build": "{{gpu}} hittades, men den här PyTorch är ett AMD ROCm-bygge och kan inte styra NVIDIA-GPU:er.",
     "gpu_report_state_intel_unsupported": "{{gpu}} hittades, men ingen installerad motor kan använda Intel-GPU:er, så allt körs på CPU:n.",
     "gpu_report_state_kernels_missing": "{{gpu}} hittades, men den här PyTorch-byggnaden ({{torch}}) har inga kärnor för sin beräkningsarkitektur, så motorerna körs på CPU:n.",
+    "gpu_report_torch_fallback": "Installationen provade PyTorch-bygget med CUDA 12.6 för det här grafikkortet men kunde inte använda det, så PyTorch-motorer körs kvar på CPU:n. Orsak: {{reason}}",
     "gpu_report_state_kernels_missing_legacy": "{{gpu}} är ett äldre NVIDIA-grafikkort (GTX 900-/1000-serien eller äldre). Den här PyTorch-versionen ({{torch}}) stöder inte längre den generationen, så PyTorch-motorer körs på CPU:n. Motorer med egen Vulkan-körmiljö kan fortfarande använda grafikkortet.",
     "gpu_report_state_unknown": "GPU-statusen kunde inte fastställas.",
     "gpu_report_option_vulkan_engines": "Använd en motor med egen GPU-runtime: audio.cpp körs på AMD Radeon-GPU:er via Vulkan (Inställningar → Modeller → installera runtime).",
@@ -2029,6 +2031,7 @@
     "setup_wrong_architecture": "Det här är Intel-versionen (x64) av VoiceStudio som körs via Rosetta på en Mac med Apple Silicon, så den lokala AI-backenden kan inte installeras. Avsluta appen, installera Apple Silicon-DMG:n (arm64) ovanpå och öppna den igen – dina röster och projekt finns kvar.",
     "setup_missing_system_library": "Det här Windows-systemet saknar Microsoft Visual C++ 2015-2022 Redistributable (x64), som PyTorch ljudextensionen behöver. Installera det från Microsoft och tryck sedan på Försök igen.",
     "setup_outdated_system_library": "Microsoft Visual C++ Redistributable (x64) på det här Windows-systemet är för gammalt, så ett talbibliotek kraschar när det läses in. Installera den senaste versionen från Microsoft och tryck sedan på Försök igen.",
+    "setup_torch_dll_init_failed": "PyTorch kunde inte läsas in och orsaken är inte fastställd. Installera den senaste Microsoft Visual C++ Redistributable (x64), uppdatera sedan grafikdrivrutinen och tryck på Försök igen. Om det fortfarande misslyckas, använd \"Rensa & Försök igen\" under \"Fler lösningar\".",
     "setup_files_locked": "Ett annat program använder VoiceStudios filer (OneDrive eller en annan synkapp, antivirus eller en VoiceStudio-backend som fortfarande körs). Stäng det eller pausa synkroniseringen och tryck sedan på Försök igen.",
     "download_apple_silicon": "Ladda ned Apple Silicon-versionen",
     "retry": "Försök igen",
@@ -2882,6 +2885,7 @@
     "source_language_required": "Taligenkänningen rapporterade inte vilket språk som talas i videon, så den kan inte översättas här. Öppna videon i Dubbning och välj källspråket, eller välj en taligenkänningsmodell som identifierar språket.",
     "transcription_media_tool": "Transkribering kräver ffmpeg, som VoiceStudio inte kunde hitta eller köra. Öppna Inställningar → Ljudverktyg och använd Ladda ned/Reparera, eller installera ffmpeg (macOS: brew install ffmpeg; Windows: winget install Gyan.FFmpeg; Linux: din pakethanterare) och starta om VoiceStudio. Du kan också peka FFMPEG_PATH mot en ffmpeg-fil.",
     "transcription_pipe_lost": "Backend förlorade sin utdatakanal till appen under transkriberingen (broken pipe). Starta om VoiceStudio och försök igen.",
+    "reference_transcript_required": "Referensklippet för den här rösten saknar transkription, vilket den här motorn behöver för att klona den. Lägg till transkriptionen i röstprofilen eller installera en taligenkänningsmodell så att den kan transkriberas automatiskt.",
     "gpu_oom": "GPU:n fick slut på minne. Stäng andra GPU-tunga appar eller avlasta modeller och försök igen. Du kan också välja CPU under Inställningar → Prestanda och enhet eller välja en mindre TTS-motor.",
     "host_memory_exhausted": "Datorn fick slut på minne. Stäng andra minnestunga appar och webbläsarflikar, avlasta modeller du inte använder, generera ett kortare stycke eller välj en lättare TTS-motor.",
     "disk_full": "Disken är full. Frigör utrymme på enheten som innehåller VoiceStudios data, modellcache eller tillfälliga mapp och försök igen. Inställningar → Lagring visar diskanvändningen och kan rensa tillfälliga filer.",
@@ -2953,6 +2957,8 @@
     "free": "Gratis",
     "pro": "Pro",
     "get_pro": "Skaffa Pro",
+    "upgrade_pro": "Uppgradera till Pro",
+    "get_pro_app": "Hämta Pro-appen",
     "sponsor_bar": "Sponsorfält",
     "visible": "Synligt",
     "hideable": "Kan döljas",

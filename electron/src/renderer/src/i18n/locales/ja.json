@@ -945,7 +945,8 @@
     "retry": "もう一度試してください",
     "confirm": "確認",
     "details": "詳細",
-    "unknown": "未知"
+    "unknown": "未知",
+    "link_blocked": "このリンクは開けません。Web とメールのリンクのみ使用できます。"
   },
   "dubWorkspace": {
     "transcriptIssues": "文字起こしの問題",
@@ -1367,6 +1368,7 @@
     "gpu_report_state_nvidia_rocm_build": "{{gpu}} が見つかりましたが、この PyTorch は AMD ROCm ビルドで、NVIDIA GPU を扱えません。",
     "gpu_report_state_intel_unsupported": "{{gpu}} が見つかりましたが、Intel GPU を使えるインストール済みエンジンがないため、すべて CPU で実行されます。",
     "gpu_report_state_kernels_missing": "{{gpu}} が見つかりましたが、この PyTorch ビルド ({{torch}}) にはその計算アーキテクチャ用のカーネルがないため、エンジンは CPU で実行されます。",
+    "gpu_report_torch_fallback": "セットアップはこのGPU向けにCUDA 12.6版PyTorchを試しましたが、カードを使用できなかったため、PyTorchエンジンはCPUで動作します。理由: {{reason}}",
     "gpu_report_state_kernels_missing_legacy": "{{gpu}} は古い NVIDIA GPU（GTX 900 / 1000 シリーズ以前）です。この PyTorch ビルド（{{torch}}）はその世代をサポートしなくなったため、PyTorch エンジンは CPU で動作します。独自の Vulkan ランタイムを持つエンジンは引き続き GPU を使えます。",
     "gpu_report_state_unknown": "GPU の状態を判定できませんでした。",
     "gpu_report_option_vulkan_engines": "独自の GPU ランタイムを持つエンジンを使用します。audio.cpp は Vulkan 経由で AMD Radeon GPU 上で動作します（設定 → モデル → ランタイムをインストール）。",
@@ -2029,6 +2031,7 @@
     "setup_wrong_architecture": "VoiceStudio を終了し、Apple Silicon（arm64）版 DMG に置き換えてから再起動してください。現在は Intel 版が Rosetta 経由で動作しています。版を切り替えてもボイスやプロジェクトは消えず、ローカル AI が利用可能になります。",
     "setup_missing_system_library": "この Windows システムには、PyTorch の音声拡張に必要な Microsoft Visual C++ 2015-2022 再頒布可能パッケージ (x64) が入っていません。Microsoft からインストールしてから、再試行を押してください。",
     "setup_outdated_system_library": "この Windows システムの Microsoft Visual C++ 再頒布可能パッケージ (x64) が古いため、音声ライブラリの読み込み時にクラッシュします。Microsoft から最新版をインストールしてから、再試行を押してください。",
+    "setup_torch_dll_init_failed": "PyTorch を読み込めませんでした。原因は特定できていません。最新の Microsoft Visual C++ 再頒布可能パッケージ (x64) をインストールし、次にグラフィックドライバーを更新してから、再試行を押してください。それでも失敗する場合は、「その他の解決策」の「クリーンアップして再試行」を使ってください。",
     "setup_files_locked": "別のプログラムが VoiceStudio のファイルを使用しています（OneDrive などの同期アプリ、ウイルス対策ソフト、または実行中のままの VoiceStudio バックエンド）。そのプログラムを閉じるか同期を一時停止してから、再試行を押してください。",
     "download_apple_silicon": "Apple Silicon 版をダウンロード",
     "ready": "エンジン準備完了",
@@ -2882,6 +2885,7 @@
     "source_language_required": "音声認識がこの動画の話し言葉を報告しなかったため、ここでは翻訳できません。吹き替えで動画を開いて元の言語を選ぶか、言語を検出できる音声認識モデルを選んでください。",
     "transcription_media_tool": "文字起こしには ffmpeg が必要ですが、VoiceStudio は見つけられないか実行できませんでした。設定 → オーディオツールを開いてダウンロード/修復を使うか、ffmpeg をインストール（macOS: brew install ffmpeg、Windows: winget install Gyan.FFmpeg、Linux: お使いのパッケージマネージャー）して VoiceStudio を再起動してください。FFMPEG_PATH を ffmpeg のファイルに向けることもできます。",
     "transcription_pipe_lost": "文字起こし中にバックエンドがアプリへの出力パイプを失いました（broken pipe）。VoiceStudio を再起動してもう一度お試しください。",
+    "reference_transcript_required": "この音声のリファレンスクリップには文字起こしがなく、このエンジンがクローンするために必要です。ボイスプロファイルに文字起こしを追加するか、自動で文字起こしできるよう音声認識モデルをインストールしてください。",
     "gpu_oom": "GPU のメモリが不足しました。GPU を多く使う他のアプリを閉じるかモデルをアンロードしてから、もう一度お試しください。設定 → パフォーマンスとデバイスで CPU を選ぶか、より小さな TTS エンジンを選ぶこともできます。",
     "host_memory_exhausted": "コンピューターのメモリが不足しました。メモリを多く使う他のアプリやブラウザータブを閉じ、使っていないモデルをアンロードし、短い文章で生成するか、より軽い TTS エンジンを選んでください。",
     "disk_full": "ディスクがいっぱいです。VoiceStudio のデータ、モデルキャッシュ、一時フォルダーがあるドライブの空き容量を増やしてから、もう一度お試しください。設定 → ストレージでディスク使用量を確認し、一時ファイルを削除できます。",
@@ -2953,6 +2957,8 @@
     "free": "無料",
     "pro": "Pro",
     "get_pro": "Pro を入手",
+    "upgrade_pro": "Proにアップグレード",
+    "get_pro_app": "Proアプリを入手",
     "sponsor_bar": "スポンサー欄",
     "visible": "表示",
     "hideable": "非表示にできます",

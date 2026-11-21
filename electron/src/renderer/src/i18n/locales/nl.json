@@ -945,7 +945,8 @@
     "retry": "Probeer het opnieuw",
     "confirm": "Bevestigen",
     "details": "Details",
-    "unknown": "onbekend"
+    "unknown": "onbekend",
+    "link_blocked": "Deze link kan niet worden geopend. Alleen web- en e-maillinks zijn toegestaan."
   },
   "dubWorkspace": {
     "transcriptIssues": "Problemen in transcript",
@@ -1367,6 +1368,7 @@
     "gpu_report_state_nvidia_rocm_build": "{{gpu}} is gevonden, maar deze PyTorch is een AMD-ROCm-build en kan geen NVIDIA-GPU's aansturen.",
     "gpu_report_state_intel_unsupported": "{{gpu}} is gevonden, maar geen geïnstalleerde engine kan Intel-GPU's gebruiken, dus alles draait op de CPU.",
     "gpu_report_state_kernels_missing": "{{gpu}} is gevonden, maar deze PyTorch-build ({{torch}}) bevat geen kernels voor de rekenarchitectuur, dus de engines draaien op de CPU.",
+    "gpu_report_torch_fallback": "De installatie probeerde de CUDA 12.6-build van PyTorch voor deze GPU, maar kon de kaart niet gebruiken, dus PyTorch-engines blijven op de CPU draaien. Reden: {{reason}}",
     "gpu_report_state_kernels_missing_legacy": "{{gpu}} is een oudere NVIDIA-GPU (GTX 900-/1000-serie of ouder). Deze PyTorch-build ({{torch}}) ondersteunt die generatie niet meer, dus PyTorch-engines draaien op de CPU. Engines met een eigen Vulkan-runtime kunnen de GPU nog wel gebruiken.",
     "gpu_report_state_unknown": "De GPU-status kon niet worden bepaald.",
     "gpu_report_option_vulkan_engines": "Gebruik een engine met een eigen GPU-runtime: audio.cpp draait via Vulkan op AMD Radeon-GPU's (Instellingen → Modellen → runtime installeren).",
@@ -2029,6 +2031,7 @@
     "setup_wrong_architecture": "Sluit VoiceStudio, vervang het door de Apple Silicon-DMG (arm64) en start opnieuw. Nu draait de Intel-editie via Rosetta; na de wissel werkt lokale AI en blijven stemmen en projecten behouden.",
     "setup_missing_system_library": "Op dit Windows-systeem ontbreekt het Microsoft Visual C++ 2015-2022 Redistributable (x64) dat de PyTorch-audio-extensie nodig heeft. Installeer het via Microsoft en druk daarna op Opnieuw proberen.",
     "setup_outdated_system_library": "Het Microsoft Visual C++ Redistributable (x64) op dit Windows-systeem is te oud, waardoor een spraakbibliotheek crasht bij het laden. Installeer de nieuwste versie via Microsoft en druk daarna op Opnieuw proberen.",
+    "setup_torch_dll_init_failed": "PyTorch kon niet worden geladen en de oorzaak is niet vastgesteld. Installeer de nieuwste Microsoft Visual C++ Redistributable (x64), werk daarna je grafische driver bij en kies Opnieuw proberen. Mislukt het nog steeds, gebruik dan \"Wissen & Opnieuw proberen\" onder \"Meer oplossingen\".",
     "setup_files_locked": "Een ander programma gebruikt de bestanden van VoiceStudio (OneDrive of een andere sync-app, antivirus, of een VoiceStudio-backend die nog draait). Sluit het of pauzeer de synchronisatie en druk daarna op Opnieuw proberen.",
     "download_apple_silicon": "Apple Silicon-versie downloaden",
     "ready": "Engine gereed",
@@ -2882,6 +2885,7 @@
     "source_language_required": "Spraakherkenning heeft niet gemeld in welke taal deze video gesproken is, dus hij kan hier niet worden vertaald. Open de video in Nasynchronisatie en kies de brontaal, of kies een spraakherkenningsmodel dat de taal detecteert.",
     "transcription_media_tool": "Voor transcriptie is ffmpeg nodig, dat VoiceStudio niet kon vinden of uitvoeren. Open Instellingen → Audiotools en gebruik Downloaden/Herstellen, of installeer ffmpeg (macOS: brew install ffmpeg; Windows: winget install Gyan.FFmpeg; Linux: je pakketbeheerder) en herstart VoiceStudio. Je kunt ook FFMPEG_PATH naar een ffmpeg-bestand laten wijzen.",
     "transcription_pipe_lost": "De backend verloor tijdens de transcriptie zijn uitvoerkanaal naar de app (broken pipe). Herstart VoiceStudio en probeer het opnieuw.",
+    "reference_transcript_required": "De referentieclip van deze stem heeft geen transcriptie, die deze engine nodig heeft om hem te klonen. Voeg de transcriptie toe aan het stemprofiel of installeer een spraakherkenningsmodel zodat het automatisch kan worden getranscribeerd.",
     "gpu_oom": "De GPU heeft geen geheugen meer. Sluit andere GPU-intensieve apps of ontlaad modellen en probeer het opnieuw. Je kunt ook CPU kiezen in Instellingen → Prestaties en apparaat of een kleinere TTS-engine selecteren.",
     "host_memory_exhausted": "De computer heeft geen geheugen meer. Sluit andere geheugenintensieve apps en browsertabs, ontlaad ongebruikte modellen, genereer een kortere passage of kies een lichtere TTS-engine.",
     "disk_full": "De schijf is vol. Maak ruimte vrij op het station met de gegevens, modelcache of tijdelijke map van VoiceStudio en probeer het opnieuw. Instellingen → Opslag toont het schijfgebruik en kan tijdelijke bestanden wissen.",
@@ -2953,6 +2957,8 @@
     "free": "Gratis",
     "pro": "Pro",
     "get_pro": "Pro nemen",
+    "upgrade_pro": "Upgraden naar Pro",
+    "get_pro_app": "Pro-app downloaden",
     "sponsor_bar": "Sponsorbalk",
     "visible": "Zichtbaar",
     "hideable": "Kan worden verborgen",

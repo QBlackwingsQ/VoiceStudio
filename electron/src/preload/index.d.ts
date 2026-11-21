@@ -66,6 +66,7 @@ export interface BackendStatus {
     | 'wrong_architecture'
     | 'missing_system_library'
     | 'outdated_system_library'
+    | 'torch_dll_init_failed'
     | 'files_locked'
     | 'install_stuck';
   /** Free disk (GiB) the failed install needed; the CPU-only install needs less than the CUDA one. */
@@ -418,8 +419,8 @@ export interface AccountPublicState {
     settingsSync: boolean | null;
     proDesktop: boolean | null;
   } | null;
-  /** Dashboard pages for the profile, the plan and account deletion; null when signed out. */
-  links: { profile: string; plan: string; deletion: string } | null;
+  /** Dashboard pages for the profile, the plan, account deletion and the Pro download; null when signed out. */
+  links: { profile: string; plan: string; deletion: string; proDownload: string } | null;
 }
 
 export interface SetupConnectionCheck {

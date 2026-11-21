@@ -945,7 +945,8 @@
     "retry": "Thử lại",
     "confirm": "Xác nhận",
     "details": "Chi tiết",
-    "unknown": "không rõ"
+    "unknown": "không rõ",
+    "link_blocked": "Không thể mở liên kết này. Chỉ cho phép liên kết web và email."
   },
   "dubWorkspace": {
     "transcriptIssues": "Vấn đề trong bản chép lời",
@@ -1367,6 +1368,7 @@
     "gpu_report_state_nvidia_rocm_build": "Đã tìm thấy {{gpu}}, nhưng PyTorch này là bản dựng AMD ROCm và không điều khiển được GPU NVIDIA.",
     "gpu_report_state_intel_unsupported": "Đã tìm thấy {{gpu}}, nhưng không engine nào đã cài dùng được GPU Intel nên mọi thứ chạy trên CPU.",
     "gpu_report_state_kernels_missing": "Đã tìm thấy {{gpu}}, nhưng bản dựng PyTorch này ({{torch}}) không có kernel cho kiến trúc tính toán của nó nên các engine chạy trên CPU.",
+    "gpu_report_torch_fallback": "Quá trình cài đặt đã thử bản PyTorch CUDA 12.6 cho GPU này nhưng không dùng được card, nên các engine PyTorch vẫn chạy trên CPU. Lý do: {{reason}}",
     "gpu_report_state_kernels_missing_legacy": "{{gpu}} là GPU NVIDIA đời cũ (dòng GTX 900 / 1000 trở về trước). Bản PyTorch này ({{torch}}) không còn hỗ trợ thế hệ đó, nên các engine PyTorch chạy trên CPU. Các engine có runtime Vulkan riêng vẫn dùng được GPU.",
     "gpu_report_state_unknown": "Không xác định được trạng thái GPU.",
     "gpu_report_option_vulkan_engines": "Dùng engine có runtime GPU riêng: audio.cpp chạy trên GPU AMD Radeon qua Vulkan (Cài đặt → Mô hình → cài runtime).",
@@ -2029,6 +2031,7 @@
     "setup_wrong_architecture": "Hãy đóng VoiceStudio, thay bằng DMG Apple Silicon (arm64), rồi mở lại. Hiện bản Intel đang chạy qua Rosetta; đổi bản sẽ bật AI cục bộ mà không xóa giọng nói hay dự án.",
     "setup_missing_system_library": "Hệ thống Windows này thiếu Microsoft Visual C++ 2015-2022 Redistributable (x64), thành phần mà tiện ích âm thanh của PyTorch cần đến. Hãy cài từ Microsoft rồi nhấn Thử lại.",
     "setup_outdated_system_library": "Microsoft Visual C++ Redistributable (x64) trên hệ thống Windows này quá cũ nên một thư viện giọng nói bị lỗi khi tải. Hãy cài phiên bản mới nhất từ Microsoft rồi nhấn Thử lại.",
+    "setup_torch_dll_init_failed": "Không thể tải PyTorch và chưa xác định được nguyên nhân. Hãy cài Microsoft Visual C++ Redistributable (x64) mới nhất, sau đó cập nhật trình điều khiển đồ họa rồi nhấn Thử lại. Nếu vẫn lỗi, hãy dùng \"Dọn dẹp & Thử lại\" trong \"Cách khắc phục khác\".",
     "setup_files_locked": "Một chương trình khác đang dùng tệp của VoiceStudio (OneDrive hoặc ứng dụng đồng bộ khác, phần mềm diệt virus, hoặc backend VoiceStudio vẫn đang chạy). Hãy đóng chương trình đó hoặc tạm dừng đồng bộ rồi nhấn Thử lại.",
     "download_apple_silicon": "Tải bản Apple Silicon",
     "retry": "Thử lại",
@@ -2882,6 +2885,7 @@
     "source_language_required": "Nhận dạng giọng nói không cho biết video này dùng ngôn ngữ nào, nên không thể dịch tại đây. Mở video trong Lồng tiếng và chọn ngôn ngữ nguồn, hoặc chọn mô hình nhận dạng giọng nói có thể phát hiện ngôn ngữ.",
     "transcription_media_tool": "Chép lời cần ffmpeg, nhưng VoiceStudio không thể tìm thấy hoặc chạy nó. Mở Cài đặt → Công cụ âm thanh và dùng Tải xuống/Sửa chữa, hoặc cài ffmpeg (macOS: brew install ffmpeg; Windows: winget install Gyan.FFmpeg; Linux: trình quản lý gói của bạn) rồi khởi động lại VoiceStudio. Bạn cũng có thể trỏ FFMPEG_PATH tới tệp ffmpeg.",
     "transcription_pipe_lost": "Backend đã mất kênh đầu ra tới ứng dụng khi đang chép lời (broken pipe). Hãy khởi động lại VoiceStudio và thử lại.",
+    "reference_transcript_required": "Đoạn tham chiếu của giọng nói này không có bản ghi lời thoại mà công cụ này cần để nhân bản. Hãy thêm bản ghi lời thoại vào hồ sơ giọng nói, hoặc cài mô hình chuyển giọng nói thành văn bản để tự động phiên âm.",
     "gpu_oom": "GPU đã hết bộ nhớ. Hãy đóng các ứng dụng khác dùng nhiều GPU hoặc gỡ mô hình khỏi bộ nhớ rồi thử lại. Bạn cũng có thể chọn CPU trong Cài đặt → Hiệu năng & Thiết bị hoặc chọn công cụ TTS nhỏ hơn.",
     "host_memory_exhausted": "Máy tính đã hết bộ nhớ. Hãy đóng các ứng dụng và thẻ trình duyệt khác dùng nhiều bộ nhớ, gỡ các mô hình không dùng, tạo đoạn ngắn hơn hoặc chọn công cụ TTS nhẹ hơn.",
     "disk_full": "Ổ đĩa đã đầy. Hãy giải phóng dung lượng trên ổ chứa dữ liệu, bộ nhớ đệm mô hình hoặc thư mục tạm của VoiceStudio rồi thử lại. Cài đặt → Lưu trữ hiển thị mức dùng ổ đĩa và có thể xóa tệp tạm.",
@@ -2953,6 +2957,8 @@
     "free": "Miễn phí",
     "pro": "Pro",
     "get_pro": "Nhận Pro",
+    "upgrade_pro": "Nâng cấp lên Pro",
+    "get_pro_app": "Tải ứng dụng Pro",
     "sponsor_bar": "Thanh nhà tài trợ",
     "visible": "Hiển thị",
     "hideable": "Có thể ẩn",

@@ -384,6 +384,7 @@
     "setup_wrong_architecture": "Sae de VoiceStudio, substitúeo polo Apple Silicon (arm64) DMG e, a continuación, ábreo de novo. Estás executando a compilación de Intel a través de Rosetta; o cambio de compilación permite a IA local sen eliminar voces ou proxectos.",
     "setup_missing_system_library": "Este sistema Windows carece do Microsoft Visual C++ 2015-2022 Redistributable (x64), que necesita a extensión de audio PyTorch. Instálao desde Microsoft e, a continuación, prema Reintentar.",
     "setup_outdated_system_library": "Microsoft Visual C++ Redistributable (x64) deste sistema Windows é demasiado antigo, polo que unha biblioteca de voz falla cando se carga. Instala a versión máis recente de Microsoft e, a continuación, preme Retry.",
+    "setup_torch_dll_init_failed": "Non se puido cargar PyTorch e a causa non está establecida. Instala o último Microsoft Visual C++ Redistributable (x64), despois actualiza o controlador gráfico e preme Tentar de novo. Se aínda falla, usa «Limpar e tentar de novo» en «Máis solucións».",
     "setup_files_locked": "Outro programa está a usar os ficheiros de VoiceStudio (OneDrive ou outra aplicación de sincronización, antivirus ou un backend de VoiceStudio que aínda está en execución). Péchao ou fai unha pausa na sincronización e, a continuación, preme Reintentar.",
     "download_apple_silicon": "Descarga a versión de Apple Silicon",
     "proxy_bypass_help": "Sae totalmente de VoiceStudio, configure HTTP_PROXY/HTTPS_PROXY no URL do seu proxy e NO_PROXY para os hosts excluídos nun terminal e, a continuación, inicie VoiceStudio desde ese terminal. Volver tentar na aplicación actual non se poden cargar novas variables de ambiente.",
@@ -683,6 +684,7 @@
     "source_language_required": "O recoñecemento de voz non informou en que idioma se fala este vídeo, polo que non se pode traducir aquí. Abre o vídeo en Dobraxe e escolle o seu idioma de orixe ou escolle un modelo de recoñecemento de voz que detecte o idioma.",
     "transcription_media_tool": "A transcrición precisa ffmpeg, que VoiceStudio non puido atopar nin executar. Abra Configuración → Ferramentas de audio e use Descargar/Reparar ou instale ffmpeg (macOS: instalación de brew ffmpeg; Windows: instalación de winget Gyan.FFmpeg; Linux: o seu xestor de paquetes) e reinicie VoiceStudio. Tamén pode apuntar FFMPEG_PATH a un binario ffmpeg.",
     "transcription_pipe_lost": "O backend perdeu o seu tubo de saída para a aplicación durante a transcrición (tubo roto). Reinicia VoiceStudio e téntao de novo.",
+    "reference_transcript_required": "O clip de referencia desta voz non ten transcrición, que este motor precisa para clonala. Engade a transcrición ao perfil de voz ou instala un modelo de voz a texto para transcribila automaticamente.",
     "gpu_oom": "A GPU quedou sen memoria. Pecha outras aplicacións con GPU pesada ou descarga modelos e, a continuación, téntao de novo. Tamén podes escoller CPU en Configuración → Rendemento e dispositivo ou seleccionar un motor TTS máis pequeno.",
     "host_memory_exhausted": "O ordenador quedou sen memoria. Pecha outras aplicacións e pestanas do navegador con moita memoria, descarga os modelos que non estás a usar, fai un paso máis curto ou selecciona un motor TTS máis lixeiro.",
     "disk_full": "O disco está cheo. Libra espazo na unidade que contén os datos de VoiceStudio, a caché do modelo ou o cartafol temporal e téntao de novo. Configuración → Almacenamento mostra o uso do disco e pode borrar ficheiros temporais.",
@@ -751,7 +753,8 @@
     "unknown": "descoñecido",
     "remove": "Eliminar {{term}}",
     "not_set": "Non definido",
-    "details": "Detalles"
+    "details": "Detalles",
+    "link_blocked": "Non se pode abrir esta ligazón. Só se permiten ligazóns web e de correo."
   },
   "preferences": {
     "title": "Configuración",
@@ -1558,6 +1561,7 @@
     "gpu_report_state_nvidia_rocm_build": "Atopouse {{gpu}}, pero este PyTorch é unha compilación AMD ROCm e non pode manexar GPU NVIDIA.",
     "gpu_report_state_intel_unsupported": "Atopouse {{gpu}}, pero ningún motor instalado pode usar GPU Intel, polo que todo funciona na CPU.",
     "gpu_report_state_kernels_missing": "Atopouse {{gpu}}, pero esta compilación de PyTorch ({{torch}}) non ten núcleos para a súa arquitectura de cálculo, polo que os motores funcionan na CPU.",
+    "gpu_report_torch_fallback": "A configuración probou a compilación de PyTorch con CUDA 12.6 para esta GPU, pero non puido usar a tarxeta, polo que os motores de PyTorch seguen na CPU. Motivo: {{reason}}",
     "gpu_report_state_kernels_missing_legacy": "{{gpu}} é unha GPU NVIDIA máis antiga (serie GTX 900 / 1000 ou anterior). Esta compilación de PyTorch ({{torch}}) xa non admite esa xeración, así que os motores de PyTorch execútanse na CPU. Os motores co seu propio runtime Vulkan aínda poden usar a GPU.",
     "gpu_report_state_unknown": "Non se puido determinar o estado da GPU.",
     "gpu_report_option_vulkan_engines": "Use un motor co seu propio tempo de execución da GPU: audio.cpp execútase en GPU AMD Radeon a través de Vulkan (Configuración → Modelos → instalar o tempo de execución).",
@@ -2953,6 +2957,8 @@
     "free": "Libre",
     "pro": "Pro",
     "get_pro": "Obtén Pro",
+    "upgrade_pro": "Mellorar a Pro",
+    "get_pro_app": "Obter a app Pro",
     "sponsor_bar": "Barra de patrocinadores",
     "visible": "Visible",
     "hideable": "Pódese ocultar",

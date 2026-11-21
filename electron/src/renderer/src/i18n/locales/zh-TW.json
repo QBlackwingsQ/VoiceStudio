@@ -945,7 +945,8 @@
     "retry": "再試一次",
     "confirm": "確認",
     "details": "詳細資料",
-    "unknown": "未知"
+    "unknown": "未知",
+    "link_blocked": "無法開啟此連結。僅允許網頁和電子郵件連結。"
   },
   "dubWorkspace": {
     "transcriptIssues": "轉錄問題",
@@ -1367,6 +1368,7 @@
     "gpu_report_state_nvidia_rocm_build": "找到了 {{gpu}}，但此 PyTorch 是 AMD ROCm 版本，無法驅動 NVIDIA GPU。",
     "gpu_report_state_intel_unsupported": "找到了 {{gpu}}，但已安裝的引擎都無法使用 Intel GPU，因此所有工作都在 CPU 上執行。",
     "gpu_report_state_kernels_missing": "找到了 {{gpu}}，但此 PyTorch 版本（{{torch}}）沒有其計算架構對應的核心，因此引擎在 CPU 上執行。",
+    "gpu_report_torch_fallback": "安裝程式已為此 GPU 嘗試 CUDA 12.6 版 PyTorch,但無法使用該顯示卡,因此 PyTorch 引擎仍在 CPU 上執行。原因:{{reason}}",
     "gpu_report_state_kernels_missing_legacy": "{{gpu}} 是較舊的 NVIDIA GPU（GTX 900 / 1000 系列或更早）。此 PyTorch 組建（{{torch}}）已不再支援該世代，因此 PyTorch 引擎在 CPU 上執行。自帶 Vulkan 執行環境的引擎仍可使用該 GPU。",
     "gpu_report_state_unknown": "無法判斷 GPU 狀態。",
     "gpu_report_option_vulkan_engines": "使用自帶 GPU 執行環境的引擎：audio.cpp 透過 Vulkan 在 AMD Radeon GPU 上執行（設定 → 模型 → 安裝執行環境）。",
@@ -2029,6 +2031,7 @@
     "setup_wrong_architecture": "這是透過 Rosetta 在 Apple Silicon Mac 上執行的 VoiceStudio Intel (x64) 版本，因此無法安裝本機 AI 後端。請結束應用程式，覆蓋安裝 Apple Silicon (arm64) 版 DMG 後重新開啟——你的聲音與專案都會保留。",
     "setup_missing_system_library": "此 Windows 系統缺少 PyTorch 音訊擴充功能所需的 Microsoft Visual C++ 2015-2022 可再散布元件 (x64)。請從 Microsoft 安裝後按一下重試。",
     "setup_outdated_system_library": "此 Windows 系統上的 Microsoft Visual C++ 可轉散發套件 (x64) 版本過舊，導致語音程式庫在載入時當機。請從 Microsoft 安裝最新版本，然後按下重試。",
+    "setup_torch_dll_init_failed": "PyTorch 無法載入，原因尚未確定。請安裝最新的 Microsoft Visual C++ 可轉散發套件 (x64)，接著更新顯示卡驅動程式，再按重試。若仍然失敗，請使用「更多修復方法」中的「清理並重試」。",
     "setup_files_locked": "另一個程式正在使用 VoiceStudio 的檔案（OneDrive 或其他同步應用程式、防毒軟體，或仍在執行的 VoiceStudio 後端）。請關閉該程式或暫停同步，然後按下重試。",
     "download_apple_silicon": "下載 Apple Silicon 版本",
     "ready": "引擎已就緒",
@@ -2882,6 +2885,7 @@
     "source_language_required": "語音辨識未回報此影片使用的語言，因此無法在此翻譯。請在配音中開啟該影片並選擇其來源語言，或選擇能偵測語言的語音辨識模型。",
     "transcription_media_tool": "轉錄需要 ffmpeg，但 VoiceStudio 找不到或無法執行它。請開啟設定 → 音訊工具並使用下載/修復，或安裝 ffmpeg（macOS：brew install ffmpeg；Windows：winget install Gyan.FFmpeg；Linux：你的套件管理員），然後重新啟動 VoiceStudio。你也可以將 FFMPEG_PATH 指向 ffmpeg 執行檔。",
     "transcription_pipe_lost": "轉錄期間後端失去了通往應用程式的輸出管道（broken pipe）。請重新啟動 VoiceStudio 後再試一次。",
+    "reference_transcript_required": "此聲音的參考音訊沒有逐字稿，而此引擎複製聲音需要它。請將逐字稿加入聲音設定檔，或安裝語音轉文字模型以自動轉寫。",
     "gpu_oom": "GPU 記憶體不足。請關閉其他佔用 GPU 的應用程式或卸載模型後重試。你也可以在 設定 → 效能與裝置 中選擇 CPU，或選擇較小的 TTS 引擎。",
     "host_memory_exhausted": "電腦記憶體不足。請關閉其他佔用記憶體的應用程式和瀏覽器分頁，卸載不用的模型，產生較短的片段，或選擇更輕量的 TTS 引擎。",
     "disk_full": "磁碟已滿。請在存放 VoiceStudio 資料、模型快取或暫存資料夾的磁碟上釋放空間，然後重試。設定 → 儲存空間會顯示磁碟用量，並可清除暫存檔案。",
@@ -2953,6 +2957,8 @@
     "free": "免費版",
     "pro": "Pro",
     "get_pro": "取得 Pro",
+    "upgrade_pro": "升級到 Pro",
+    "get_pro_app": "取得 Pro 應用程式",
     "sponsor_bar": "贊助商列",
     "visible": "顯示",
     "hideable": "可隱藏",

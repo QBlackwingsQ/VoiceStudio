@@ -72,6 +72,10 @@ Without valid app credentials, the existing public events request
 (`/api/public/v1/events`, event `diagnostic_report`) and site remain unchanged.
 Usage analytics keeps its existing destination and request format.
 `config/diagnostics.json` is the shared closed metadata policy.
+Desktop process crashes carry a closed code that names the path, never a message:
+main-process uncaught exception or unhandled rejection, GPU process gone, utility
+process gone, or another Electron child process gone (the child's free-text service
+name is not read). A generation deadline reports `GPU_JOB_TIMEOUT`.
 Reports contain technical categories/codes, app/build/platform labels,
 known first-party source locations, bounded counters and a separately generated
 random installation ID. They never contain audio, text/transcripts, user names,
@@ -93,7 +97,10 @@ network delivery or flush a crash dump.
 
 The durable queue is limited to 64 records and 512 KiB per installation, expires
 after seven days, coalesces repeated failures and uses bounded retries with
-stable report IDs. Desktop allocates that total between main and the Python
+stable report IDs. One fingerprint may hold at most eight of those slots, so a
+failure that repeats often enough drops its own oldest record rather than
+evicting unrelated evidence that is still inside its retention window. Desktop
+allocates that total between main and the Python
 inbox. Recovered crashes retain the original accepted fault or heartbeat timestamp;
 restarting does not extend their retention. Turning reports off stops delivery
 immediately, cancels active transport, invalidates the consent epoch and purges
